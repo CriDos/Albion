@@ -4,6 +4,8 @@ class IconService {
         this.iconCache = {};
         this.db = null;
         this.initIconsDatabase();
+        this.tooltip = null;
+        this.createTooltip();
     }
 
     initIconsDatabase() {
@@ -22,6 +24,35 @@ class IconService {
         request.onsuccess = (event) => {
             this.db = event.target.result;
         };
+    }
+
+    createTooltip() {
+        this.tooltip = document.createElement('div');
+        this.tooltip.className = 'copy-tooltip';
+        this.tooltip.textContent = 'Скопировано!';
+        document.body.appendChild(this.tooltip);
+    }
+
+    showCopyTooltip(element, text) {
+        const rect = element.getBoundingClientRect();
+        this.tooltip.textContent = text || 'Скопировано!';
+        this.tooltip.style.left = `${rect.left + (rect.width / 2)}px`;
+        this.tooltip.style.top = `${rect.top - 30}px`;
+        this.tooltip.style.transform = 'translate(-50%, 0)';
+        
+        gsap.fromTo(this.tooltip, 
+            { opacity: 0, y: 10 }, 
+            { opacity: 1, y: 0, duration: 0.3, 
+                onComplete: () => {
+                    gsap.to(this.tooltip, { 
+                        opacity: 0, 
+                        y: -10, 
+                        delay: 1, 
+                        duration: 0.3 
+                    });
+                }
+            }
+        );
     }
 
     getItemIconUrl(itemId) {
@@ -357,6 +388,43 @@ class UIService {
 
     initEventListeners() {
         // Кнопки для работы с данными
+        const buttons = document.querySelectorAll('.analyzer-button');
+        
+        buttons.forEach(button => {
+            button.addEventListener('mouseenter', () => {
+                gsap.to(button, { 
+                    scale: 1.05, 
+                    duration: 0.1, 
+                    ease: "power1.out",
+                    clearProps: "filter,blur"
+                });
+            });
+            
+            button.addEventListener('mouseleave', () => {
+                gsap.to(button, { 
+                    scale: 1, 
+                    duration: 0.1, 
+                    ease: "power1.out" 
+                });
+            });
+            
+            button.addEventListener('mousedown', () => {
+                gsap.to(button, { 
+                    scale: 0.95, 
+                    duration: 0.08, 
+                    ease: "power1.in" 
+                });
+            });
+            
+            button.addEventListener('mouseup', () => {
+                gsap.to(button, { 
+                    scale: 1.05, 
+                    duration: 0.08, 
+                    ease: "power1.out" 
+                });
+            });
+        });
+
         document.getElementById('fetch-data').addEventListener('click', () => this.fetchData());
         document.getElementById('apply-filters').addEventListener('click', () => this.applyFilters());
         document.getElementById('reset-filters').addEventListener('click', () => this.resetFilters());
@@ -444,9 +512,23 @@ class UIService {
             return;
         }
 
-        filteredData.forEach(item => {
-            tbody.appendChild(this.createTableRow(item));
+        gsap.set(tbody, { opacity: 0 });
+
+        filteredData.forEach((item, index) => {
+            const row = this.createTableRow(item);
+            tbody.appendChild(row);
+            gsap.set(row, { opacity: 0, y: 10 });
+            
+            gsap.to(row, {
+                opacity: 1,
+                y: 0,
+                duration: 0.2,
+                delay: index * 0.03,
+                ease: "power1.out"
+            });
         });
+        
+        gsap.to(tbody, { opacity: 1, duration: 0.3 });
     }
 
     renderEmptyTableMessage(tbody) {
@@ -520,15 +602,23 @@ class UIService {
         itemIcon.style.cursor = 'pointer';
         itemIcon.alt = item.itemName;
 
-        itemIcon.addEventListener('click', function () {
+        itemIcon.addEventListener('click', () => {
             navigator.clipboard.writeText(item.itemName)
                 .then(() => {
-                    const originalBorder = this.style.border;
-                    this.style.border = '2px solid #4CAF50';
-
-                    setTimeout(() => {
-                        this.style.border = originalBorder;
-                    }, 1000);
+                    this.iconService.showCopyTooltip(itemIcon, "Скопировано!");
+                    
+                    gsap.to(itemIcon, {
+                        scale: 1.1,
+                        duration: 0.2,
+                        ease: "power1.out",
+                        onComplete: () => {
+                            gsap.to(itemIcon, {
+                                scale: 1,
+                                duration: 0.2,
+                                ease: "power1.in"
+                            });
+                        }
+                    });
                 })
                 .catch(err => { });
         });
@@ -562,8 +652,15 @@ class UIService {
     }
 
     showLoading(show) {
-        this.loadingElement.style.display = show ? 'block' : 'none';
-        document.getElementById('analyzer-table-container').style.display = show ? 'none' : 'block';
+        if (show) {
+            gsap.to(this.loadingElement, { display: 'block', opacity: 1, duration: 0.3 });
+            gsap.to(document.getElementById('analyzer-table-container'), { display: 'none', opacity: 0, duration: 0.3 });
+        } else {
+            gsap.to(this.loadingElement, { opacity: 0, duration: 0.3, onComplete: () => {
+                this.loadingElement.style.display = 'none';
+            }});
+            gsap.to(document.getElementById('analyzer-table-container'), { display: 'block', opacity: 1, duration: 0.3 });
+        }
     }
 
     showItemsRating() {
@@ -580,12 +677,28 @@ class UIService {
 
     openItemsRatingModal() {
         this.itemsRatingModal.style.display = 'block';
+        
+        const modalContent = this.itemsRatingModal.querySelector('.modal-content');
+        gsap.fromTo(modalContent, 
+            { opacity: 0, y: -20 }, 
+            { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }
+        );
     }
 
     closeItemsRatingModal() {
-        this.itemsRatingModal.style.display = 'none';
-        const highlightedRows = document.querySelectorAll('tr.highlighted-item');
-        highlightedRows.forEach(row => row.classList.remove('highlighted-item'));
+        const modalContent = this.itemsRatingModal.querySelector('.modal-content');
+        
+        gsap.to(modalContent, { 
+            opacity: 0, 
+            y: 20, 
+            duration: 0.3, 
+            ease: "power2.in",
+            onComplete: () => {
+                this.itemsRatingModal.style.display = 'none';
+                const highlightedRows = document.querySelectorAll('tr.highlighted-item');
+                highlightedRows.forEach(row => row.classList.remove('highlighted-item'));
+            }
+        });
     }
 
     renderItemsRating() {
@@ -606,6 +719,11 @@ class UIService {
         sortedItems.forEach((item, index) => {
             const listItem = this.createRatingListItem(item, index, quartiles);
             bestItemsList.appendChild(listItem);
+            
+            gsap.fromTo(listItem, 
+                { opacity: 0, x: -10 }, 
+                { opacity: 1, x: 0, duration: 0.3, delay: index * 0.02 }
+            );
         });
     }
 
@@ -668,12 +786,24 @@ class UIService {
             const rows = tbody.querySelectorAll('tr');
 
             if (rows.length > dataIndex) {
-                rows[dataIndex].classList.add('highlighted-item');
+                const targetRow = rows[dataIndex];
+                targetRow.classList.add('highlighted-item');
+                
+                gsap.fromTo(targetRow, 
+                    { backgroundColor: 'rgba(255, 255, 0, 0.8)' }, 
+                    { backgroundColor: 'rgba(255, 240, 0, 0.3)', duration: 1, ease: "power2.out" }
+                );
 
-                rows[dataIndex].scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'center'
-                });
+                // Закрываем модальное окно плавно
+                this.closeItemsRatingModal();
+                
+                // Плавная прокрутка с задержкой для закрытия модального окна
+                setTimeout(() => {
+                    targetRow.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'center'
+                    });
+                }, 300);
             }
         });
     }
@@ -684,7 +814,15 @@ class UIService {
 
         items.forEach(item => {
             const itemName = item.querySelector('.item-name').textContent.toLowerCase();
-            item.style.display = itemName.includes(searchText) ? 'flex' : 'none';
+            const matches = itemName.includes(searchText);
+            
+            if (matches) {
+                gsap.to(item, { display: 'flex', opacity: 1, height: 'auto', duration: 0.3 });
+            } else {
+                gsap.to(item, { opacity: 0, height: 0, duration: 0.3, onComplete: () => {
+                    item.style.display = 'none';
+                }});
+            }
         });
     }
 }
@@ -702,10 +840,49 @@ class App {
             await this.dataService.loadItemsData();
             this.uiService.initEventListeners();
             this.uiService.updateTable();
+            
+            // Добавляю анимации при загрузке страницы
+            this.initPageAnimations();
         } catch (error) {
             console.error('Ошибка инициализации приложения:', error);
             alert('Не удалось инициализировать приложение. Пожалуйста, перезагрузите страницу.');
         }
+    }
+    
+    initPageAnimations() {
+        // Анимация заголовка
+        gsap.from('h1', { opacity: 0, y: -20, duration: 0.8, ease: "power2.out" });
+        
+        // Анимация панелей фильтров
+        gsap.from('#locations-filter', { 
+            opacity: 0, 
+            y: -10, 
+            duration: 0.5, 
+            delay: 0.2, 
+            ease: "power1.out" 
+        });
+        
+        gsap.from('#analyzer-filters', { 
+            opacity: 0, 
+            y: -10, 
+            duration: 0.5, 
+            delay: 0.3, 
+            ease: "power1.out" 
+        });
+        
+        // Анимация контейнера таблицы
+        gsap.from('#analyzer-table-container', { 
+            opacity: 0, 
+            scale: 0.95, 
+            duration: 0.6, 
+            delay: 0.4, 
+            ease: "power2.out" 
+        });
+        
+        // Добавляем класс для плавных переходов всем важным элементам
+        document.querySelectorAll('button, select, input').forEach(element => {
+            element.classList.add('animated-transition');
+        });
     }
 }
 
