@@ -4,6 +4,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentSortField = 'profit';
     let sortAscending = false;
     let itemsData = []; 
+    let iconCache = {}; // Кэш для иконок предметов в памяти
+    let db; // Объект для IndexedDB
 
     const fromLocationSelect = document.getElementById('from-location');
     const toLocationSelect = document.getElementById('to-location');
@@ -15,7 +17,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadingElement = document.getElementById('loading');
     const statusElement = document.getElementById('analyzer-status');
     const tableHeaders = table.querySelectorAll('th');
-
+   
+    // Инициализируем базу данных для кэширования иконок
+    initIconsDatabase();
     loadItemsData();
 
     fetchDataButton.addEventListener('click', fetchData);
@@ -26,31 +30,73 @@ document.addEventListener('DOMContentLoaded', () => {
         header.addEventListener('click', () => sortTable(header.dataset.field));
     });
 
-    async function loadItemsData() {
-        try {
-            const response = await fetch('items.json');
-            if (!response.ok) {
-                console.warn('Не удалось загрузить данные локализации:', response.status);
-                return;
-            }
+    // Инициализация базы данных для кэширования иконок
+    function initIconsDatabase() {
+        const request = indexedDB.open('AlbionIconsCache', 1);
+        
+        request.onerror = function(event) {
+            console.error('Ошибка при открытии базы данных для кэширования иконок:', event.target.error);
+        };
+        
+        request.onupgradeneeded = function(event) {
+            const db = event.target.result;
             
-            itemsData = await response.json();
-            console.log(`Загружено ${itemsData.length} названий предметов`);
-        } catch (error) {
-            console.warn('Ошибка при загрузке данных локализации:', error);
-        }
+            // Создаем хранилище объектов для иконок, если его еще нет
+            if (!db.objectStoreNames.contains('icons')) {
+                const iconStore = db.createObjectStore('icons', { keyPath: 'url' });
+            }
+        };
+        
+        request.onsuccess = function(event) {
+            db = event.target.result;
+            console.log('База данных для кэширования иконок успешно инициализирована');
+        };
+    }
+
+    async function loadItemsData() {
+        return new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.overrideMimeType("application/json");
+            xhr.open('GET', 'items.json', true);
+            
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    try {
+                        itemsData = JSON.parse(xhr.responseText);
+                        console.log(`Загружено ${itemsData.length} названий предметов`);
+                        resolve();
+                    } catch (e) {
+                        console.warn('Ошибка при разборе данных локализации:', e);
+                        reject(e);
+                    }
+                } else {
+                    console.warn('Не удалось загрузить данные локализации:', xhr.status);
+                    reject(new Error(`Статус: ${xhr.status}`));
+                }
+            };
+            
+            xhr.onerror = function() {
+                console.warn('Ошибка при загрузке данных локализации');
+                reject(new Error('Ошибка сети'));
+            };
+            
+            xhr.send();
+        });
     }
 
     function getItemName(uniqueName) {
-        const cleanUniqueName = uniqueName.replace(/@\d+$/, '');
+        let item = itemsData.find(item => item.UniqueName === uniqueName);
         
-        const item = itemsData.find(item => item.UniqueName === cleanUniqueName);
+        if (!item) {
+            const cleanUniqueName = uniqueName.replace(/@\d+$/, '');
+            item = itemsData.find(item => item.UniqueName === cleanUniqueName);
+        }
         
         if (item && item.LocalizedNames && item.LocalizedNames["RU-RU"]) {
             return item.LocalizedNames["RU-RU"];
         }
         
-        return formatItemId(uniqueName);
+        return uniqueName;
     }
 
     async function fetchData() {
@@ -102,15 +148,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const toItem = item.to;
             
             const buyPrice = fromItem.sellPriceMin;
-            
             const sellPrice = toItem.sellPriceMin;
-            
             const profit = sellPrice - buyPrice;
-            
             const profitPercent = buyPrice > 0 ? (profit / buyPrice) * 100 : 0;
-            
             const soldPerDay = toItem.averageItems || 0;
-            
             const buyDate = formatDate(fromItem.sellPriceMinDate);
             const sellDate = formatDate(toItem.sellPriceMinDate);
             
@@ -147,7 +188,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         sortTable(currentSortField, true);
-
         statusElement.textContent = `Отфильтровано: ${filteredData.length} из ${data.length} записей`;
     }
 
@@ -157,9 +197,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('min-sold-per-day').value = '';
 
         filteredData = [...data];
-
         sortTable(currentSortField, true);
-
         statusElement.textContent = `Фильтры сброшены. Отображено ${filteredData.length} записей`;
     }
 
@@ -211,7 +249,37 @@ document.addEventListener('DOMContentLoaded', () => {
             const row = document.createElement('tr');
 
             const itemIdCell = document.createElement('td');
-            itemIdCell.textContent = item.itemName;
+            
+            // Добавляем контейнер для иконки и названия
+            const itemContainer = document.createElement('div');
+            itemContainer.style.display = 'flex';
+            itemContainer.style.alignItems = 'center';
+            
+            // Добавляем иконку предмета
+            const itemIcon = document.createElement('img');
+            itemIcon.style.width = '64px';
+            itemIcon.style.height = '64px';
+            itemIcon.style.marginRight = '8px';
+            itemIcon.style.flexShrink = '0';
+            itemIcon.alt = item.itemName;
+            
+            // Получаем URL иконки и загружаем её с использованием кэша
+            const iconUrl = getItemIconUrl(item.itemId);
+            loadItemIcon(iconUrl, itemIcon);
+            
+            // Добавляем текст названия предмета
+            const itemNameSpan = document.createElement('span');
+            itemNameSpan.textContent = item.itemName;
+            itemNameSpan.style.whiteSpace = 'nowrap';
+            itemNameSpan.style.overflow = 'hidden';
+            itemNameSpan.style.textOverflow = 'ellipsis';
+            
+            // Собираем всё вместе
+            itemContainer.appendChild(itemIcon);
+            itemContainer.appendChild(itemNameSpan);
+            itemIdCell.appendChild(itemContainer);
+            itemIdCell.style.minWidth = '250px';
+            
             row.appendChild(itemIdCell);
 
             const qualityCell = document.createElement('td');
@@ -298,14 +366,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return `${date.getDate()}.${date.getMonth() + 1}.${date.getFullYear()}`;
     }
 
-    function formatItemId(itemId) {
-        let formattedId = itemId.replace(/^T\d+_/, '').replace(/@\d+$/, '');
-        
-        formattedId = formattedId.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-        
-        return formattedId;
-    }
-
     function getQualityName(quality) {
         const qualityNames = {
             1: 'Обычное',
@@ -323,5 +383,120 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('analyzer-table-container').style.display = show ? 'none' : 'block';
     }
     
+    // Функция для получения URL иконки предмета
+    function getItemIconUrl(itemId) {
+        return `https://albion-profit-calculator.com/images/items/${itemId}.png`;
+    }
+    
+    // Функция для загрузки и кэширования иконок предметов
+    function loadItemIcon(url, imgElement) {
+        // Проверяем кэш в памяти сначала
+        if (iconCache[url]) {
+            imgElement.src = iconCache[url];
+            return;
+        }
+        
+        // Если нет в памяти, проверяем кэш в IndexedDB
+        getIconFromCache(url).then(cachedIcon => {
+            if (cachedIcon) {
+                // Если иконка найдена в кэше, используем ее
+                iconCache[url] = URL.createObjectURL(cachedIcon.blob);
+                imgElement.src = iconCache[url];
+            } else {
+                // Если иконки нет в кэше, загружаем её с сервера
+                imgElement.onerror = function() {
+                    // Если не удалось загрузить, устанавливаем заглушку
+                    const blankImage = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+                    this.src = blankImage;
+                    this.style.opacity = '0.3';
+                    iconCache[url] = blankImage;
+                    
+                    // Сохраняем заглушку в кэш
+                    fetch(blankImage)
+                        .then(response => response.blob())
+                        .then(blob => {
+                            saveIconToCache(url, blob);
+                        })
+                        .catch(err => console.error('Ошибка при сохранении заглушки в кэш:', err));
+                };
+                
+                imgElement.onload = function() {
+                    // Кэшируем успешно загруженную иконку
+                    fetch(url)
+                        .then(response => {
+                            if (!response.ok) throw new Error('Ошибка сети при загрузке иконки');
+                            return response.blob();
+                        })
+                        .then(blob => {
+                            // Сохраняем изображение в кэш
+                            saveIconToCache(url, blob);
+                            // Кэшируем в памяти
+                            iconCache[url] = URL.createObjectURL(blob);
+                        })
+                        .catch(err => console.error('Ошибка при кэшировании иконки:', err));
+                };
+                
+                imgElement.src = url;
+            }
+        }).catch(error => {
+            console.error('Ошибка при получении иконки из кэша:', error);
+            // В случае ошибки загружаем напрямую
+            imgElement.src = url;
+        });
+    }
+    
+    // Получение иконки из IndexedDB
+    function getIconFromCache(url) {
+        return new Promise((resolve, reject) => {
+            if (!db) {
+                resolve(null);
+                return;
+            }
+            
+            try {
+                const transaction = db.transaction(['icons'], 'readonly');
+                const store = transaction.objectStore('icons');
+                const request = store.get(url);
+                
+                request.onsuccess = function(event) {
+                    resolve(event.target.result);
+                };
+                
+                request.onerror = function(event) {
+                    console.error('Ошибка при получении иконки из кэша:', event.target.error);
+                    resolve(null);
+                };
+            } catch (error) {
+                console.error('Исключение при получении иконки из кэша:', error);
+                resolve(null);
+            }
+        });
+    }
+    
+    // Сохранение иконки в IndexedDB
+    function saveIconToCache(url, blob) {
+        if (!db) return;
+        
+        try {
+            const transaction = db.transaction(['icons'], 'readwrite');
+            const store = transaction.objectStore('icons');
+            
+            // Сохраняем с дополнительной информацией
+            const iconData = {
+                url: url,
+                blob: blob,
+                timestamp: new Date().getTime()
+            };
+            
+            const request = store.put(iconData);
+            
+            request.onerror = function(event) {
+                console.error('Ошибка при сохранении иконки в кэш:', event.target.error);
+            };
+        } catch (error) {
+            console.error('Исключение при сохранении иконки в кэш:', error);
+        }
+    }
+
     updateTable();
 }); 
