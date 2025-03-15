@@ -593,13 +593,23 @@ class UIService {
         const bestItemsList = document.getElementById('best-items-list');
         bestItemsList.innerHTML = '';
 
+        // Вычисляем квартили для более корректного распределения цветов
+        const scores = sortedItems.map(item => item.score);
+        scores.sort((a, b) => a - b);
+        
+        const quartiles = {
+            q3: scores[Math.floor(scores.length * 0.75)],
+            q2: scores[Math.floor(scores.length * 0.5)], // медиана
+            q1: scores[Math.floor(scores.length * 0.25)]
+        };
+
         sortedItems.forEach((item, index) => {
-            const listItem = this.createRatingListItem(item, index);
+            const listItem = this.createRatingListItem(item, index, quartiles);
             bestItemsList.appendChild(listItem);
         });
     }
 
-    createRatingListItem(item, index) {
+    createRatingListItem(item, index, quartiles) {
         const listItem = document.createElement('li');
         listItem.dataset.index = item.dataIndex;
 
@@ -619,20 +629,36 @@ class UIService {
         listItem.appendChild(nameSpan);
         listItem.appendChild(scoreSpan);
 
-        this.styleRatingItem(listItem, item.score);
+        this.styleRatingItem(listItem, item.score, quartiles);
         this.addRatingItemClickHandler(listItem);
 
         return listItem;
     }
 
-    styleRatingItem(listItem, score) {
-        if (score > 4) {
+    styleRatingItem(listItem, score, quartiles) {
+        // Получаем значение продаж в день из текста элемента
+        const scoreText = listItem.querySelector('.item-score').textContent;
+        const soldPerDayText = scoreText.split('/')[1].trim();
+        const soldPerDay = parseFloat(soldPerDayText);
+        
+        // Если продаж 0 в день - сразу красим в красный
+        if (soldPerDay === 0) {
+            listItem.style.borderLeft = '3px solid #F44336';
+            return;
+        }
+        
+        // Далее стандартная логика по квартилям
+        if (score >= quartiles.q3) {
+            // Верхний квартиль - зеленый (отличные товары)
             listItem.style.borderLeft = '3px solid #4CAF50';
-        } else if (score > 2) {
+        } else if (score >= quartiles.q2) {
+            // Выше медианы - желтый (хорошие товары)
             listItem.style.borderLeft = '3px solid #FFC107';
-        } else if (score > 1) {
+        } else if (score >= quartiles.q1) {
+            // Выше нижнего квартиля - оранжевый (средние товары)
             listItem.style.borderLeft = '3px solid #FF9800';
         } else {
+            // Нижний квартиль - красный (худшие товары)
             listItem.style.borderLeft = '3px solid #F44336';
         }
     }
