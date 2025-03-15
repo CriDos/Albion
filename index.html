@@ -209,12 +209,14 @@
         
         .modal-content {
             background-color: #fff;
-            margin: 5% auto;
+            margin: 3% auto;
             width: 90%;
             max-width: 1200px;
             border-radius: 5px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
             animation: modalFadeIn 0.3s;
+            max-height: 85vh;
+            overflow: auto;
         }
         
         @keyframes modalFadeIn {
@@ -249,10 +251,12 @@
         
         .modal-body {
             padding: 15px;
+            overflow: auto;
+            max-height: calc(85vh - 60px);
         }
         
         .chart-container {
-            height: 500px;
+            height: 400px;
             width: 100%;
         }
         
@@ -299,7 +303,7 @@
             list-style-type: none;
             padding: 0;
             margin: 10px 0 0 0;
-            max-height: 500px;
+            max-height: 350px;
             overflow-y: auto;
         }
         
