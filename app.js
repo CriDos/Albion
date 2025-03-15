@@ -4,9 +4,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentSortField = 'profit';
     let sortAscending = false;
     let itemsData = []; 
-    let iconCache = {}; // Кэш для иконок предметов в памяти
-    let db; // Объект для IndexedDB
-    let currentChart = null; // Для хранения текущего экземпляра графика
+    let iconCache = {};
+    let db;
+    let currentChart = null;
 
     const fromLocationSelect = document.getElementById('from-location');
     const toLocationSelect = document.getElementById('to-location');
@@ -20,13 +20,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const statusElement = document.getElementById('analyzer-status');
     const tableHeaders = table.querySelectorAll('th');
     
-    // Элементы модального окна с графиками
     const showChartsBtn = document.getElementById('show-charts');
     const chartsModal = document.getElementById('charts-modal');
     const closeModal = document.querySelector('.close-modal');
     const chartCanvas = document.getElementById('chart-canvas');
     
-    // Инициализируем базу данных для кэширования иконок
     initIconsDatabase();
     loadItemsData();
 
@@ -38,7 +36,6 @@ document.addEventListener('DOMContentLoaded', () => {
         header.addEventListener('click', () => sortTable(header.dataset.field));
     });
     
-    // Обработчики для модального окна с графиками
     showChartsBtn.addEventListener('click', () => {
         if (filteredData.length === 0) {
             alert('Сначала загрузите данные для отображения графиков');
@@ -46,12 +43,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         openChartsModal();
-        renderScatterChart(); // Показываем единственный график Прибыль/объем
+        renderScatterChart();
     });
     
     closeModal.addEventListener('click', () => {
         chartsModal.style.display = 'none';
-        // Убираем подсветку при закрытии графика
         const highlightedRows = document.querySelectorAll('tr.highlighted-item');
         highlightedRows.forEach(row => row.classList.remove('highlighted-item'));
     });
@@ -59,13 +55,11 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('click', (e) => {
         if (e.target === chartsModal) {
             chartsModal.style.display = 'none';
-            // Убираем подсветку при закрытии графика
             const highlightedRows = document.querySelectorAll('tr.highlighted-item');
             highlightedRows.forEach(row => row.classList.remove('highlighted-item'));
         }
     });
 
-    // Инициализация базы данных для кэширования иконок
     function initIconsDatabase() {
         const request = indexedDB.open('AlbionIconsCache', 1);
         
@@ -76,7 +70,6 @@ document.addEventListener('DOMContentLoaded', () => {
         request.onupgradeneeded = function(event) {
             const db = event.target.result;
             
-            // Создаем хранилище объектов для иконок, если его еще нет
             if (!db.objectStoreNames.contains('icons')) {
                 const iconStore = db.createObjectStore('icons', { keyPath: 'url' });
             }
@@ -286,12 +279,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const itemIdCell = document.createElement('td');
             
-            // Добавляем контейнер для иконки и названия
             const itemContainer = document.createElement('div');
             itemContainer.style.display = 'flex';
             itemContainer.style.alignItems = 'center';
             
-            // Добавляем иконку предмета
             const itemIcon = document.createElement('img');
             itemIcon.style.width = '64px';
             itemIcon.style.height = '64px';
@@ -300,18 +291,14 @@ document.addEventListener('DOMContentLoaded', () => {
             itemIcon.style.cursor = 'pointer';
             itemIcon.alt = item.itemName;
             
-            // Обработчик клика для копирования названия предмета
             itemIcon.addEventListener('click', function() {
                 navigator.clipboard.writeText(item.itemName)
                     .then(() => {
-                        // Добавляем визуальную обратную связь
                         const originalBorder = this.style.border;
                         this.style.border = '2px solid #4CAF50';
                         
-                        // Показываем статус
                         statusElement.textContent = `Название "${item.itemName}" скопировано в буфер обмена`;
                         
-                        // Возвращаем исходный стиль через 1 секунду
                         setTimeout(() => {
                             this.style.border = originalBorder;
                         }, 1000);
@@ -322,18 +309,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
             });
             
-            // Получаем URL иконки и загружаем её с использованием кэша
             const iconUrl = getItemIconUrl(item.itemId);
             loadItemIcon(iconUrl, itemIcon);
             
-            // Добавляем текст названия предмета
             const itemNameSpan = document.createElement('span');
             itemNameSpan.textContent = item.itemName;
             itemNameSpan.style.whiteSpace = 'nowrap';
             itemNameSpan.style.overflow = 'hidden';
             itemNameSpan.style.textOverflow = 'ellipsis';
             
-            // Собираем всё вместе
             itemContainer.appendChild(itemIcon);
             itemContainer.appendChild(itemNameSpan);
             itemIdCell.appendChild(itemContainer);
@@ -442,35 +426,27 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('analyzer-table-container').style.display = show ? 'none' : 'block';
     }
     
-    // Функция для получения URL иконки предмета
     function getItemIconUrl(itemId) {
         return `https://albion-profit-calculator.com/images/items/${itemId}.png`;
     }
     
-    // Функция для загрузки и кэширования иконок предметов
     function loadItemIcon(url, imgElement) {
-        // Проверяем кэш в памяти сначала
         if (iconCache[url]) {
             imgElement.src = iconCache[url];
             return;
         }
         
-        // Если нет в памяти, проверяем кэш в IndexedDB
         getIconFromCache(url).then(cachedIcon => {
             if (cachedIcon) {
-                // Если иконка найдена в кэше, используем ее
                 iconCache[url] = URL.createObjectURL(cachedIcon.blob);
                 imgElement.src = iconCache[url];
             } else {
-                // Если иконки нет в кэше, загружаем её с сервера
                 imgElement.onerror = function() {
-                    // Если не удалось загрузить, устанавливаем заглушку
                     const blankImage = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
                     this.src = blankImage;
                     this.style.opacity = '0.3';
                     iconCache[url] = blankImage;
                     
-                    // Сохраняем заглушку в кэш
                     fetch(blankImage)
                         .then(response => response.blob())
                         .then(blob => {
@@ -480,16 +456,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
                 
                 imgElement.onload = function() {
-                    // Кэшируем успешно загруженную иконку
                     fetch(url)
                         .then(response => {
                             if (!response.ok) throw new Error('Ошибка сети при загрузке иконки');
                             return response.blob();
                         })
                         .then(blob => {
-                            // Сохраняем изображение в кэш
                             saveIconToCache(url, blob);
-                            // Кэшируем в памяти
                             iconCache[url] = URL.createObjectURL(blob);
                         })
                         .catch(err => console.error('Ошибка при кэшировании иконки:', err));
@@ -499,12 +472,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }).catch(error => {
             console.error('Ошибка при получении иконки из кэша:', error);
-            // В случае ошибки загружаем напрямую
             imgElement.src = url;
         });
     }
     
-    // Получение иконки из IndexedDB
     function getIconFromCache(url) {
         return new Promise((resolve, reject) => {
             if (!db) {
@@ -532,7 +503,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // Сохранение иконки в IndexedDB
     function saveIconToCache(url, blob) {
         if (!db) return;
         
@@ -540,7 +510,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const transaction = db.transaction(['icons'], 'readwrite');
             const store = transaction.objectStore('icons');
             
-            // Сохраняем с дополнительной информацией
             const iconData = {
                 url: url,
                 blob: blob,
@@ -557,19 +526,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Функция для открытия модального окна с графиками
     function openChartsModal() {
         chartsModal.style.display = 'block';
     }
     
-    // График соотношения прибыли и объема продаж
     function renderScatterChart() {
-        // Уничтожаем предыдущий график перед созданием нового
         if (currentChart) {
             currentChart.destroy();
         }
         
-        // Создаем массив с индексами для связи между точками на графике и строками таблицы
         const dataPoints = filteredData.map((item, index) => ({
             x: item.profitPercent,
             y: item.soldPerDay,
@@ -580,24 +545,20 @@ document.addEventListener('DOMContentLoaded', () => {
             quality: item.quality,
             fromLocation: item.fromLocation,
             toLocation: item.toLocation,
-            dataIndex: index // Добавляем индекс для связи с таблицей
+            dataIndex: index
         }));
         
-        // Создаем квадранты для пометки зон на графике
         const quadrantLines = {
             id: 'quadrantLines',
             beforeDraw(chart) {
                 const {ctx, chartArea: {left, top, right, bottom}, scales: {x, y}} = chart;
                 
-                // Среднее значение для X (процент прибыли)
                 const avgProfit = filteredData.reduce((sum, item) => sum + item.profitPercent, 0) / filteredData.length;
-                // Среднее значение для Y (продаж в день)
                 const avgSold = filteredData.reduce((sum, item) => sum + item.soldPerDay, 0) / filteredData.length;
                 
                 const xValue = x.getPixelForValue(avgProfit);
                 const yValue = y.getPixelForValue(avgSold);
                 
-                // Рисуем вертикальную линию
                 ctx.save();
                 ctx.strokeStyle = 'rgba(150, 150, 150, 0.5)';
                 ctx.setLineDash([5, 5]);
@@ -606,35 +567,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 ctx.lineTo(xValue, bottom);
                 ctx.stroke();
                 
-                // Рисуем горизонтальную линию
                 ctx.beginPath();
                 ctx.moveTo(left, yValue);
                 ctx.lineTo(right, yValue);
                 ctx.stroke();
                 
-                // Метки для квадрантов
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
                 ctx.font = '12px Arial';
                 
-                // Верхний правый - лучшие товары
                 ctx.fillText('Лучшие товары', xValue + 5, yValue - 5);
-                // Нижний правый - высокая прибыль, низкие продажи
                 ctx.fillText('Высокая прибыль, низкие продажи', xValue + 5, bottom - 5);
-                // Верхний левый - низкая прибыль, высокие продажи
                 ctx.fillText('Низкая прибыль, высокие продажи', left + 5, yValue - 5);
-                // Нижний левый - худшие товары
                 ctx.fillText('Низкая ликвидность', left + 5, bottom - 5);
                 
                 ctx.restore();
             }
         };
         
-        // Переменные для хранения состояния перетаскивания правой кнопкой мыши
         let isDragging = false;
         let dragStartX = 0;
         let dragStartY = 0;
         
-        // Обработчик события колесика мыши для масштабирования
         chartCanvas.addEventListener('wheel', function(e) {
             if (!currentChart) return;
             
@@ -644,36 +597,29 @@ document.addEventListener('DOMContentLoaded', () => {
             const mouseX = e.clientX - rect.left;
             const mouseY = e.clientY - rect.top;
             
-            // Определяем коэффициент масштабирования
             const zoomFactor = e.deltaY < 0 ? 0.9 : 1.1;
             
-            // Получаем текущие минимальные и максимальные значения шкал
             const xScale = currentChart.scales.x;
             const yScale = currentChart.scales.y;
             
-            // Вычисляем точку в координатах графика, на которую наведен курсор
             const xValue = xScale.getValueForPixel(mouseX);
             const yValue = yScale.getValueForPixel(mouseY);
             
-            // Новые минимальные и максимальные значения шкал
             const newXMin = xValue - (xValue - xScale.min) * zoomFactor;
             const newXMax = xValue + (xScale.max - xValue) * zoomFactor;
             const newYMin = yValue - (yValue - yScale.min) * zoomFactor;
             const newYMax = yValue + (yScale.max - yValue) * zoomFactor;
             
-            // Обновляем масштаб шкал
             xScale.options.min = newXMin;
             xScale.options.max = newXMax;
             yScale.options.min = newYMin;
             yScale.options.max = newYMax;
             
-            // Обновляем график
             currentChart.update();
         });
         
-        // Обработчик нажатия на правую кнопку мыши
         chartCanvas.addEventListener('mousedown', function(e) {
-            if (!currentChart || e.button !== 2) return; // Проверяем, что это правая кнопка мыши (button = 2)
+            if (!currentChart || e.button !== 2) return;
             
             e.preventDefault();
             
@@ -681,11 +627,9 @@ document.addEventListener('DOMContentLoaded', () => {
             dragStartX = e.clientX;
             dragStartY = e.clientY;
             
-            // Изменяем стиль курсора
             chartCanvas.style.cursor = 'grabbing';
         });
         
-        // Обработчик перемещения мыши
         chartCanvas.addEventListener('mousemove', function(e) {
             if (!currentChart || !isDragging) return;
             
@@ -698,14 +642,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const xScale = currentChart.scales.x;
             const yScale = currentChart.scales.y;
             
-            // Вычисляем расстояние в единицах данных
             const pixelsPerUnitX = rect.width / (xScale.max - xScale.min);
             const pixelsPerUnitY = rect.height / (yScale.max - yScale.min);
             
             const deltaDataX = -deltaX / pixelsPerUnitX;
             const deltaDataY = deltaY / pixelsPerUnitY;
             
-            // Обновляем масштаб с новыми min/max
             xScale.options.min += deltaDataX;
             xScale.options.max += deltaDataX;
             yScale.options.min += deltaDataY;
@@ -713,12 +655,10 @@ document.addEventListener('DOMContentLoaded', () => {
             
             currentChart.update();
             
-            // Обновляем начальные координаты для следующего события mousemove
             dragStartX = e.clientX;
             dragStartY = e.clientY;
         });
         
-        // Обработчик отпускания кнопки мыши
         window.addEventListener('mouseup', function(e) {
             if (isDragging) {
                 isDragging = false;
@@ -726,7 +666,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
         
-        // Отключаем контекстное меню при правом клике на холсте графика
         chartCanvas.addEventListener('contextmenu', function(e) {
             e.preventDefault();
         });
@@ -746,7 +685,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         return value > 0 ? 'rgba(75, 192, 75, 1)' : 'rgba(255, 99, 132, 1)';
                     },
                     pointRadius: function(context) {
-                        // Размер точки зависит от абсолютного значения прибыли
                         const value = Math.abs(context.raw.profit);
                         return Math.min(Math.max(5, Math.log(value) * 1.5), 15);
                     },
@@ -821,7 +759,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 },
                 onClick: function(e, elements) {
-                    // Убираем существующую подсветку
                     const highlightedRows = document.querySelectorAll('tr.highlighted-item');
                     highlightedRows.forEach(row => row.classList.remove('highlighted-item'));
                     
@@ -829,20 +766,17 @@ document.addEventListener('DOMContentLoaded', () => {
                         const index = elements[0].index;
                         const dataIndex = dataPoints[index].dataIndex;
                         
-                        // Находим соответствующую строку в таблице и подсвечиваем ее
                         const tbody = table.querySelector('tbody');
                         const rows = tbody.querySelectorAll('tr');
                         
                         if (rows.length > dataIndex) {
                             rows[dataIndex].classList.add('highlighted-item');
                             
-                            // Прокручиваем к выбранной строке в таблице
                             rows[dataIndex].scrollIntoView({
                                 behavior: 'smooth',
                                 block: 'center'
                             });
                             
-                            // Показываем сообщение
                             statusElement.textContent = `Выбран товар: ${dataPoints[index].itemName}`;
                         }
                     }
