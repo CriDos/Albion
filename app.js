@@ -461,7 +461,7 @@ class UIService {
             // Сохраняем настройки после успешной загрузки
             this.saveFiltersToStorage();
         } catch (error) {
-            alert(`Ошибка при загрузке данных: ${error.message}`);
+            this.showLoadingError(error.message);
         } finally {
             this.showLoading(false);
         }
@@ -552,7 +552,7 @@ class UIService {
         const row = document.createElement('tr');
         const cell = document.createElement('td');
         cell.colSpan = 11;
-        cell.textContent = 'Нет данных для отображения. Загрузите данные или измените фильтры.';
+        cell.textContent = 'Загрузка данных... Пожалуйста, подождите.';
         cell.style.textAlign = 'center';
         cell.style.padding = '20px';
         row.appendChild(cell);
@@ -891,6 +891,22 @@ class UIService {
     clearFiltersStorage() {
         localStorage.removeItem('albionFilters');
     }
+
+    showLoadingError(message) {
+        this.showLoading(false);
+        const tbody = this.table.querySelector('tbody');
+        tbody.innerHTML = '';
+        
+        const row = document.createElement('tr');
+        const cell = document.createElement('td');
+        cell.colSpan = 11;
+        cell.textContent = `Ошибка загрузки данных: ${message}. Нажмите "Обновить данные", чтобы попробовать снова.`;
+        cell.style.textAlign = 'center';
+        cell.style.padding = '20px';
+        cell.style.color = 'red';
+        row.appendChild(cell);
+        tbody.appendChild(row);
+    }
 }
 
 class App {
@@ -905,12 +921,17 @@ class App {
             await this.dataService.loadItemsData();
             this.uiService.initEventListeners();
             
-            // Загружаем настройки фильтров из localStorage,
-            // но не запускаем автоматически загрузку данных
             this.uiService.updateSortIndicators();
-            this.uiService.updateTable();
+            
+            // Показываем экран загрузки сразу
+            this.uiService.showLoading(true);
             
             this.initPageAnimations();
+            
+            // После инициализации приложения автоматически загружаем данные
+            setTimeout(() => {
+                this.uiService.fetchData();
+            }, 1000); // Добавляем небольшую задержку, чтобы анимации успели запуститься
         } catch (error) {
             console.error('Ошибка инициализации приложения:', error);
             alert('Не удалось инициализировать приложение. Пожалуйста, перезагрузите страницу.');
