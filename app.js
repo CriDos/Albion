@@ -425,9 +425,18 @@ class UIService {
         });
 
         document.getElementById('fetch-data').addEventListener('click', () => this.fetchData());
-        document.getElementById('apply-filters').addEventListener('click', () => this.applyFilters());
-        document.getElementById('reset-filters').addEventListener('click', () => this.resetFilters());
         document.getElementById('show-items-rating').addEventListener('click', () => this.showItemsRating());
+
+        // Добавляем обработчики событий input для полей фильтров
+        this.minProfitInput.addEventListener('input', () => this.applyFilters());
+        this.minProfitPercentInput.addEventListener('input', () => this.applyFilters());
+        this.minSoldPerDayInput.addEventListener('input', () => this.applyFilters());
+        
+        // Добавляем обработчики для выпадающих списков и полей выбора
+        this.fromLocationSelect.addEventListener('change', () => this.saveFiltersToStorage());
+        this.toLocationSelect.addEventListener('change', () => this.saveFiltersToStorage());
+        this.itemsCountInput.addEventListener('input', () => this.saveFiltersToStorage());
+        this.sortTypeSelect.addEventListener('change', () => this.saveFiltersToStorage());
 
         this.tableHeaders.forEach(header => {
             header.addEventListener('click', () => this.sortTable(header.dataset.field));
@@ -456,6 +465,13 @@ class UIService {
 
         try {
             await this.dataService.fetchMarketData(fromLocation, toLocation, itemsCount, sortType);
+            
+            // Применяем сохраненные фильтры после загрузки данных
+            const minProfit = parseFloat(this.minProfitInput.value) || 0;
+            const minProfitPercent = parseFloat(this.minProfitPercentInput.value) || 0;
+            const minSoldPerDay = parseFloat(this.minSoldPerDayInput.value) || 0;
+            
+            this.dataService.applyFilters(minProfit, minProfitPercent, minSoldPerDay);
             this.sortTable(this.currentSortField, true);
             
             // Сохраняем настройки после успешной загрузки
@@ -477,15 +493,6 @@ class UIService {
         
         // Сохраняем фильтры в localStorage
         this.saveFiltersToStorage();
-        
-        // Добавим визуальное подтверждение сохранения
-        const applyButton = document.getElementById('apply-filters');
-        const originalText = applyButton.textContent;
-        applyButton.textContent = 'Сохранено ✓';
-        
-        setTimeout(() => {
-            applyButton.textContent = originalText;
-        }, 1500);
     }
 
     resetFilters() {
