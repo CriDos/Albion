@@ -16,7 +16,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const resetFiltersButton = document.getElementById('reset-filters');
     const table = document.getElementById('analyzer-table');
     const loadingElement = document.getElementById('loading');
-    const statusElement = document.getElementById('analyzer-status');
     const tableHeaders = table.querySelectorAll('th');
     
     const showItemsRatingBtn = document.getElementById('show-items-rating');
@@ -157,7 +156,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const url = `https://albion-profit-calculator.com/api/transportations/sort?from=${fromLocation}&to=${toLocation}&count=${itemsCount}&skip=0&sort=BY_LAST_TIME_CHECKED,${sortType}&serverId=aod_europe`;
         
         showLoading(true);
-        statusElement.textContent = 'Загрузка данных...';
+        console.log('Загрузка данных...');
         
         try {
             const response = await fetch(url, {
@@ -178,10 +177,10 @@ document.addEventListener('DOMContentLoaded', () => {
             
             sortTable(currentSortField, true);
             
-            statusElement.textContent = `Загружено ${data.length} записей`;
+            console.log(`Загружено ${data.length} записей`);
         } catch (error) {
             console.error('Ошибка при загрузке данных:', error);
-            statusElement.textContent = `Ошибка при загрузке данных: ${error.message}`;
+            alert(`Ошибка при загрузке данных: ${error.message}`);
         } finally {
             showLoading(false);
         }
@@ -233,7 +232,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         sortTable(currentSortField, true);
-        statusElement.textContent = `Отфильтровано: ${filteredData.length} из ${data.length} записей`;
+        console.log(`Отфильтровано: ${filteredData.length} из ${data.length} записей`);
     }
 
     function resetFilters() {
@@ -243,7 +242,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         filteredData = [...data];
         sortTable(currentSortField, true);
-        statusElement.textContent = `Фильтры сброшены. Отображено ${filteredData.length} записей`;
+        console.log(`Фильтры сброшены. Отображено ${filteredData.length} записей`);
     }
 
     function sortTable(field, skipToggle = false) {
@@ -271,7 +270,7 @@ document.addEventListener('DOMContentLoaded', () => {
         updateSortIndicators();
 
         const direction = sortAscending ? "по возрастанию" : "по убыванию";
-        statusElement.textContent = `Данные отсортированы по полю '${field}' ${direction}`;
+        console.log(`Данные отсортированы по полю '${field}' ${direction}`);
     }
 
     function updateTable() {
@@ -313,7 +312,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         const originalBorder = this.style.border;
                         this.style.border = '2px solid #4CAF50';
                         
-                        statusElement.textContent = `Название "${item.itemName}" скопировано в буфер обмена`;
+                        console.log(`Название "${item.itemName}" скопировано в буфер обмена`);
                         
                         setTimeout(() => {
                             this.style.border = originalBorder;
@@ -321,7 +320,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     })
                     .catch(err => {
                         console.error('Ошибка при копировании в буфер обмена:', err);
-                        statusElement.textContent = 'Не удалось скопировать название в буфер обмена';
+                        console.log('Не удалось скопировать название в буфер обмена');
                     });
             });
             
@@ -645,7 +644,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         block: 'center'
                     });
                     
-                    statusElement.textContent = `Выбран товар: ${item.itemName}`;
+                    console.log(`Выбран товар: ${item.itemName}`);
                 }
             });
             
