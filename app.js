@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let itemsData = []; 
     let iconCache = {}; // Кэш для иконок предметов в памяти
     let db; // Объект для IndexedDB
+    let currentChart = null; // Для хранения текущего экземпляра графика
 
     const fromLocationSelect = document.getElementById('from-location');
     const toLocationSelect = document.getElementById('to-location');
@@ -18,7 +19,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadingElement = document.getElementById('loading');
     const statusElement = document.getElementById('analyzer-status');
     const tableHeaders = table.querySelectorAll('th');
-   
+    
+    // Элементы модального окна с графиками
+    const showChartsBtn = document.getElementById('show-charts');
+    const chartsModal = document.getElementById('charts-modal');
+    const closeModal = document.querySelector('.close-modal');
+    const chartCanvas = document.getElementById('chart-canvas');
+    
     // Инициализируем базу данных для кэширования иконок
     initIconsDatabase();
     loadItemsData();
@@ -29,6 +36,33 @@ document.addEventListener('DOMContentLoaded', () => {
     resetFiltersButton.addEventListener('click', resetFilters);
     tableHeaders.forEach(header => {
         header.addEventListener('click', () => sortTable(header.dataset.field));
+    });
+    
+    // Обработчики для модального окна с графиками
+    showChartsBtn.addEventListener('click', () => {
+        if (filteredData.length === 0) {
+            alert('Сначала загрузите данные для отображения графиков');
+            return;
+        }
+        
+        openChartsModal();
+        renderScatterChart(); // Показываем единственный график Прибыль/объем
+    });
+    
+    closeModal.addEventListener('click', () => {
+        chartsModal.style.display = 'none';
+        // Убираем подсветку при закрытии графика
+        const highlightedRows = document.querySelectorAll('tr.highlighted-item');
+        highlightedRows.forEach(row => row.classList.remove('highlighted-item'));
+    });
+    
+    window.addEventListener('click', (e) => {
+        if (e.target === chartsModal) {
+            chartsModal.style.display = 'none';
+            // Убираем подсветку при закрытии графика
+            const highlightedRows = document.querySelectorAll('tr.highlighted-item');
+            highlightedRows.forEach(row => row.classList.remove('highlighted-item'));
+        }
     });
 
     // Инициализация базы данных для кэширования иконок
@@ -521,6 +555,199 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error('Исключение при сохранении иконки в кэш:', error);
         }
+    }
+
+    // Функция для открытия модального окна с графиками
+    function openChartsModal() {
+        chartsModal.style.display = 'block';
+    }
+    
+    // График соотношения прибыли и объема продаж
+    function renderScatterChart() {
+        // Уничтожаем предыдущий график перед созданием нового
+        if (currentChart) {
+            currentChart.destroy();
+        }
+        
+        // Создаем массив с индексами для связи между точками на графике и строками таблицы
+        const dataPoints = filteredData.map((item, index) => ({
+            x: item.profitPercent,
+            y: item.soldPerDay,
+            profit: item.profit,
+            itemName: item.itemName,
+            buyPrice: item.buyPrice,
+            sellPrice: item.sellPrice,
+            quality: item.quality,
+            fromLocation: item.fromLocation,
+            toLocation: item.toLocation,
+            dataIndex: index // Добавляем индекс для связи с таблицей
+        }));
+        
+        // Создаем квадранты для пометки зон на графике
+        const quadrantLines = {
+            id: 'quadrantLines',
+            beforeDraw(chart) {
+                const {ctx, chartArea: {left, top, right, bottom}, scales: {x, y}} = chart;
+                
+                // Среднее значение для X (процент прибыли)
+                const avgProfit = filteredData.reduce((sum, item) => sum + item.profitPercent, 0) / filteredData.length;
+                // Среднее значение для Y (продаж в день)
+                const avgSold = filteredData.reduce((sum, item) => sum + item.soldPerDay, 0) / filteredData.length;
+                
+                const xValue = x.getPixelForValue(avgProfit);
+                const yValue = y.getPixelForValue(avgSold);
+                
+                // Рисуем вертикальную линию
+                ctx.save();
+                ctx.strokeStyle = 'rgba(150, 150, 150, 0.5)';
+                ctx.setLineDash([5, 5]);
+                ctx.beginPath();
+                ctx.moveTo(xValue, top);
+                ctx.lineTo(xValue, bottom);
+                ctx.stroke();
+                
+                // Рисуем горизонтальную линию
+                ctx.beginPath();
+                ctx.moveTo(left, yValue);
+                ctx.lineTo(right, yValue);
+                ctx.stroke();
+                
+                // Метки для квадрантов
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+                ctx.font = '12px Arial';
+                
+                // Верхний правый - лучшие товары
+                ctx.fillText('Лучшие товары', xValue + 5, yValue - 5);
+                // Нижний правый - высокая прибыль, низкие продажи
+                ctx.fillText('Высокая прибыль, низкие продажи', xValue + 5, bottom - 5);
+                // Верхний левый - низкая прибыль, высокие продажи
+                ctx.fillText('Низкая прибыль, высокие продажи', left + 5, yValue - 5);
+                // Нижний левый - худшие товары
+                ctx.fillText('Низкая ликвидность', left + 5, bottom - 5);
+                
+                ctx.restore();
+            }
+        };
+        
+        currentChart = new Chart(chartCanvas, {
+            type: 'scatter',
+            data: {
+                datasets: [{
+                    label: 'Товары',
+                    data: dataPoints,
+                    backgroundColor: function(context) {
+                        const value = context.raw.profit;
+                        return value > 0 ? 'rgba(75, 192, 75, 0.6)' : 'rgba(255, 99, 132, 0.6)';
+                    },
+                    borderColor: function(context) {
+                        const value = context.raw.profit;
+                        return value > 0 ? 'rgba(75, 192, 75, 1)' : 'rgba(255, 99, 132, 1)';
+                    },
+                    pointRadius: function(context) {
+                        // Размер точки зависит от абсолютного значения прибыли
+                        const value = Math.abs(context.raw.profit);
+                        return Math.min(Math.max(5, Math.log(value) * 1.5), 15);
+                    },
+                    pointHoverRadius: 15,
+                    pointHoverBorderWidth: 2,
+                    pointHoverBackgroundColor: function(context) {
+                        const value = context.raw.profit;
+                        return value > 0 ? 'rgba(75, 192, 75, 0.8)' : 'rgba(255, 99, 132, 0.8)';
+                    }
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Соотношение прибыли и объема продаж',
+                        font: {
+                            size: 18
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const point = context.raw;
+                                return [
+                                    `Товар: ${point.itemName}`,
+                                    `Качество: ${getQualityName(point.quality)}`,
+                                    `Процент прибыли: ${point.x.toFixed(2)}%`,
+                                    `Продаж в день: ${point.y.toFixed(2)}`,
+                                    `Абсолютная прибыль: ${point.profit.toLocaleString()} серебра`,
+                                    `Цена покупки: ${point.buyPrice.toLocaleString()} серебра`,
+                                    `Цена продажи: ${point.sellPrice.toLocaleString()} серебра`,
+                                    `Маршрут: ${point.fromLocation} → ${point.toLocation}`
+                                ];
+                            }
+                        }
+                    },
+                    legend: {
+                        display: false
+                    },
+                    quadrantLines: quadrantLines
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Продаж в день',
+                            font: {
+                                size: 14,
+                                weight: 'bold'
+                            }
+                        },
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.1)'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Процент прибыли (%)',
+                            font: {
+                                size: 14,
+                                weight: 'bold'
+                            }
+                        },
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.1)'
+                        }
+                    }
+                },
+                onClick: function(e, elements) {
+                    // Убираем существующую подсветку
+                    const highlightedRows = document.querySelectorAll('tr.highlighted-item');
+                    highlightedRows.forEach(row => row.classList.remove('highlighted-item'));
+                    
+                    if (elements.length > 0) {
+                        const index = elements[0].index;
+                        const dataIndex = dataPoints[index].dataIndex;
+                        
+                        // Находим соответствующую строку в таблице и подсвечиваем ее
+                        const tbody = table.querySelector('tbody');
+                        const rows = tbody.querySelectorAll('tr');
+                        
+                        if (rows.length > dataIndex) {
+                            rows[dataIndex].classList.add('highlighted-item');
+                            
+                            // Прокручиваем к выбранной строке в таблице
+                            rows[dataIndex].scrollIntoView({
+                                behavior: 'smooth',
+                                block: 'center'
+                            });
+                            
+                            // Показываем сообщение
+                            statusElement.textContent = `Выбран товар: ${dataPoints[index].itemName}`;
+                        }
+                    }
+                }
+            },
+            plugins: [quadrantLines]
+        });
     }
 
     updateTable();
