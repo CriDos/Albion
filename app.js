@@ -42,9 +42,8 @@ document.addEventListener('DOMContentLoaded', () => {
         openItemsRatingModal();
         showItemsRating();
         
-        // Добавляем обработчик для поиска по товарам в списке
         const itemsSearch = document.getElementById('items-search');
-        itemsSearch.value = ''; // Сбрасываем значение поиска при открытии
+        itemsSearch.value = '';
         
         itemsSearch.addEventListener('input', function() {
             const searchText = this.value.toLowerCase();
@@ -79,7 +78,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const request = indexedDB.open('AlbionIconsCache', 1);
         
         request.onerror = function(event) {
-            console.error('Ошибка при открытии базы данных для кэширования иконок:', event.target.error);
         };
         
         request.onupgradeneeded = function(event) {
@@ -92,7 +90,6 @@ document.addEventListener('DOMContentLoaded', () => {
         
         request.onsuccess = function(event) {
             db = event.target.result;
-            console.log('База данных для кэширования иконок успешно инициализирована');
         };
     }
 
@@ -106,20 +103,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (xhr.status === 200) {
                     try {
                         itemsData = JSON.parse(xhr.responseText);
-                        console.log(`Загружено ${itemsData.length} названий предметов`);
                         resolve();
                     } catch (e) {
-                        console.warn('Ошибка при разборе данных локализации:', e);
                         reject(e);
                     }
                 } else {
-                    console.warn('Не удалось загрузить данные локализации:', xhr.status);
                     reject(new Error(`Статус: ${xhr.status}`));
                 }
             };
             
             xhr.onerror = function() {
-                console.warn('Ошибка при загрузке данных локализации');
                 reject(new Error('Ошибка сети'));
             };
             
@@ -156,7 +149,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const url = `https://albion-profit-calculator.com/api/transportations/sort?from=${fromLocation}&to=${toLocation}&count=${itemsCount}&skip=0&sort=BY_LAST_TIME_CHECKED,${sortType}&serverId=aod_europe`;
         
         showLoading(true);
-        console.log('Загрузка данных...');
         
         try {
             const response = await fetch(url, {
@@ -176,10 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
             filteredData = [...data];
             
             sortTable(currentSortField, true);
-            
-            console.log(`Загружено ${data.length} записей`);
         } catch (error) {
-            console.error('Ошибка при загрузке данных:', error);
             alert(`Ошибка при загрузке данных: ${error.message}`);
         } finally {
             showLoading(false);
@@ -232,7 +221,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         sortTable(currentSortField, true);
-        console.log(`Отфильтровано: ${filteredData.length} из ${data.length} записей`);
     }
 
     function resetFilters() {
@@ -242,7 +230,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         filteredData = [...data];
         sortTable(currentSortField, true);
-        console.log(`Фильтры сброшены. Отображено ${filteredData.length} записей`);
     }
 
     function sortTable(field, skipToggle = false) {
@@ -268,9 +255,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         updateTable();
         updateSortIndicators();
-
-        const direction = sortAscending ? "по возрастанию" : "по убыванию";
-        console.log(`Данные отсортированы по полю '${field}' ${direction}`);
     }
 
     function updateTable() {
@@ -312,15 +296,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         const originalBorder = this.style.border;
                         this.style.border = '2px solid #4CAF50';
                         
-                        console.log(`Название "${item.itemName}" скопировано в буфер обмена`);
-                        
                         setTimeout(() => {
                             this.style.border = originalBorder;
                         }, 1000);
                     })
                     .catch(err => {
-                        console.error('Ошибка при копировании в буфер обмена:', err);
-                        console.log('Не удалось скопировать название в буфер обмена');
                     });
             });
             
@@ -467,7 +447,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         .then(blob => {
                             saveIconToCache(url, blob);
                         })
-                        .catch(err => console.error('Ошибка при сохранении заглушки в кэш:', err));
+                        .catch(err => {});
                 };
                 
                 imgElement.onload = function() {
@@ -480,13 +460,12 @@ document.addEventListener('DOMContentLoaded', () => {
                             saveIconToCache(url, blob);
                             iconCache[url] = URL.createObjectURL(blob);
                         })
-                        .catch(err => console.error('Ошибка при кэшировании иконки:', err));
+                        .catch(err => {});
                 };
                 
                 imgElement.src = url;
             }
         }).catch(error => {
-            console.error('Ошибка при получении иконки из кэша:', error);
             imgElement.src = url;
         });
     }
@@ -508,11 +487,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
                 
                 request.onerror = function(event) {
-                    console.error('Ошибка при получении иконки из кэша:', event.target.error);
                     resolve(null);
                 };
             } catch (error) {
-                console.error('Исключение при получении иконки из кэша:', error);
                 resolve(null);
             }
         });
@@ -534,10 +511,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const request = store.put(iconData);
             
             request.onerror = function(event) {
-                console.error('Ошибка при сохранении иконки в кэш:', event.target.error);
             };
         } catch (error) {
-            console.error('Исключение при сохранении иконки в кэш:', error);
         }
     }
 
@@ -559,27 +534,20 @@ document.addEventListener('DOMContentLoaded', () => {
             dataIndex: index
         }));
         
-        // Расчет и отображение товаров
         showBestItems(dataPoints);
     }
 
-    // Функция для расчета и отображения товаров
     function showBestItems(dataPoints) {
         const bestItemsList = document.getElementById('best-items-list');
         bestItemsList.innerHTML = '';
         
-        // Расчет средних значений
         const avgProfit = filteredData.reduce((sum, item) => sum + item.profitPercent, 0) / filteredData.length;
         const avgSold = filteredData.reduce((sum, item) => sum + item.soldPerDay, 0) / filteredData.length;
         
-        // Расчет комбинированного показателя для каждого товара
-        // Учитываем как процент прибыли, так и количество продаж в день
         const itemsWithScore = dataPoints.map(item => {
-            // Нормализация значений относительно средних
             const profitScore = item.x / avgProfit;
             const soldScore = item.y / avgSold;
             
-            // Комбинированный показатель (простое произведение нормализованных значений)
             const combinedScore = profitScore * soldScore;
             
             return {
@@ -588,11 +556,9 @@ document.addEventListener('DOMContentLoaded', () => {
             };
         });
         
-        // Сортировка товаров по комбинированному показателю
         const sortedItems = [...itemsWithScore]
             .sort((a, b) => b.score - a.score);
         
-        // Создание элементов списка для всех товаров
         sortedItems.forEach((item, index) => {
             const listItem = document.createElement('li');
             listItem.dataset.index = item.dataIndex;
@@ -613,7 +579,6 @@ document.addEventListener('DOMContentLoaded', () => {
             listItem.appendChild(nameSpan);
             listItem.appendChild(scoreSpan);
             
-            // Добавляем цветовую индикацию в зависимости от рейтинга
             if (item.score > 4) {
                 listItem.style.borderLeft = '3px solid #4CAF50';
             } else if (item.score > 2) {
@@ -624,15 +589,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 listItem.style.borderLeft = '3px solid #F44336';
             }
             
-            // Обработчик клика по элементу списка
             listItem.addEventListener('click', function() {
                 const dataIndex = parseInt(this.dataset.index);
                 
-                // Удаление предыдущих выделений
                 const highlightedRows = document.querySelectorAll('tr.highlighted-item');
                 highlightedRows.forEach(row => row.classList.remove('highlighted-item'));
                 
-                // Выделение соответствующей строки в таблице
                 const tbody = table.querySelector('tbody');
                 const rows = tbody.querySelectorAll('tr');
                 
@@ -643,8 +605,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         behavior: 'smooth',
                         block: 'center'
                     });
-                    
-                    console.log(`Выбран товар: ${item.itemName}`);
                 }
             });
             
