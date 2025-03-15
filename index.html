@@ -261,6 +261,60 @@
             50% { background-color: rgba(255, 240, 0, 0.5); }
             100% { background-color: rgba(255, 240, 0, 0.3); }
         }
+        
+        #items-rating-container {
+            margin-top: 0;
+            padding: 15px;
+            background-color: rgba(75, 192, 75, 0.1);
+            border-radius: 5px;
+            border-left: 4px solid #4CAF50;
+        }
+        
+        #items-rating-container h3 {
+            margin-top: 0;
+            color: #333;
+            font-size: 16px;
+        }
+        
+        #best-items-list {
+            list-style-type: none;
+            padding: 0;
+            margin: 10px 0 0 0;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        
+        #best-items-list li {
+            padding: 8px;
+            margin-bottom: 5px;
+            background-color: #f9f9f9;
+            border-radius: 3px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            transition: background-color 0.2s;
+        }
+        
+        #best-items-list li:hover {
+            background-color: #f0f0f0;
+        }
+        
+        #best-items-list li .item-rank {
+            font-weight: bold;
+            margin-right: 10px;
+            min-width: 20px;
+            text-align: center;
+        }
+        
+        #best-items-list li .item-score {
+            margin-left: auto;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        
+        .items-filter {
+            margin: 10px 0;
+        }
     </style>
 </head>
 <body>
@@ -324,7 +378,7 @@
             <div class="filter-buttons">
                 <button id="apply-filters" class="analyzer-button">Применить</button>
                 <button id="reset-filters" class="analyzer-button">Сбросить</button>
-                <button id="show-charts" class="analyzer-button">Графики</button>
+                <button id="show-items-rating" class="analyzer-button">Рейтинг товаров</button>
             </div>
         </div>
         
@@ -356,19 +410,23 @@
         </div>
         <div id="analyzer-status">Готов к работе</div>
         
-        <div id="charts-modal" class="modal">
+        <div id="items-rating-modal" class="modal">
             <div class="modal-content">
                 <div class="modal-header">
                     <span class="close-modal">&times;</span>
-                    <h2>Графики по данным</h2>
+                    <h2>Рейтинг товаров</h2>
                 </div>
                 <div class="modal-body">
-                    <div class="chart-container">
-                        <canvas id="chart-canvas"></canvas>
+                    <div id="items-rating-container">
+                        <h3>Товары по соотношению прибыли и объема продаж</h3>
+                        <div class="items-filter">
+                            <input type="text" id="items-search" placeholder="Поиск по названию товара..." class="filter-input">
+                        </div>
+                        <ul id="best-items-list"></ul>
                     </div>
                     <div id="chart-instructions">
-                        <p>На графике точки представляют товары. По осям: % прибыли и продаж/день. Размер точки зависит от абсолютного значения прибыли.</p>
-                        <p>Нажмите на точку, чтобы подсветить соответствующий товар в таблице.</p>
+                        <p>Список содержит все товары из основной таблицы, отсортированные по комбинированному показателю прибыли и объема продаж.</p>
+                        <p>Нажмите на товар, чтобы подсветить его в основной таблице.</p>
                     </div>
                 </div>
             </div>

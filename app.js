@@ -6,7 +6,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let itemsData = []; 
     let iconCache = {};
     let db;
-    let currentChart = null;
 
     const fromLocationSelect = document.getElementById('from-location');
     const toLocationSelect = document.getElementById('to-location');
@@ -20,10 +19,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const statusElement = document.getElementById('analyzer-status');
     const tableHeaders = table.querySelectorAll('th');
     
-    const showChartsBtn = document.getElementById('show-charts');
-    const chartsModal = document.getElementById('charts-modal');
+    const showItemsRatingBtn = document.getElementById('show-items-rating');
+    const itemsRatingModal = document.getElementById('items-rating-modal');
     const closeModal = document.querySelector('.close-modal');
-    const chartCanvas = document.getElementById('chart-canvas');
     
     initIconsDatabase();
     loadItemsData();
@@ -36,25 +34,43 @@ document.addEventListener('DOMContentLoaded', () => {
         header.addEventListener('click', () => sortTable(header.dataset.field));
     });
     
-    showChartsBtn.addEventListener('click', () => {
+    showItemsRatingBtn.addEventListener('click', () => {
         if (filteredData.length === 0) {
-            alert('Сначала загрузите данные для отображения графиков');
+            alert('Сначала загрузите данные для отображения рейтинга товаров');
             return;
         }
         
-        openChartsModal();
-        renderScatterChart();
+        openItemsRatingModal();
+        showItemsRating();
+        
+        // Добавляем обработчик для поиска по товарам в списке
+        const itemsSearch = document.getElementById('items-search');
+        itemsSearch.value = ''; // Сбрасываем значение поиска при открытии
+        
+        itemsSearch.addEventListener('input', function() {
+            const searchText = this.value.toLowerCase();
+            const items = document.querySelectorAll('#best-items-list li');
+            
+            items.forEach(item => {
+                const itemName = item.querySelector('.item-name').textContent.toLowerCase();
+                if (itemName.includes(searchText)) {
+                    item.style.display = 'flex';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        });
     });
     
     closeModal.addEventListener('click', () => {
-        chartsModal.style.display = 'none';
+        itemsRatingModal.style.display = 'none';
         const highlightedRows = document.querySelectorAll('tr.highlighted-item');
         highlightedRows.forEach(row => row.classList.remove('highlighted-item'));
     });
     
     window.addEventListener('click', (e) => {
-        if (e.target === chartsModal) {
-            chartsModal.style.display = 'none';
+        if (e.target === itemsRatingModal) {
+            itemsRatingModal.style.display = 'none';
             const highlightedRows = document.querySelectorAll('tr.highlighted-item');
             highlightedRows.forEach(row => row.classList.remove('highlighted-item'));
         }
@@ -526,15 +542,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function openChartsModal() {
-        chartsModal.style.display = 'block';
+    function openItemsRatingModal() {
+        itemsRatingModal.style.display = 'block';
     }
     
-    function renderScatterChart() {
-        if (currentChart) {
-            currentChart.destroy();
-        }
-        
+    function showItemsRating() {
         const dataPoints = filteredData.map((item, index) => ({
             x: item.profitPercent,
             y: item.soldPerDay,
@@ -548,241 +560,96 @@ document.addEventListener('DOMContentLoaded', () => {
             dataIndex: index
         }));
         
-        const quadrantLines = {
-            id: 'quadrantLines',
-            beforeDraw(chart) {
-                const {ctx, chartArea: {left, top, right, bottom}, scales: {x, y}} = chart;
-                
-                const avgProfit = filteredData.reduce((sum, item) => sum + item.profitPercent, 0) / filteredData.length;
-                const avgSold = filteredData.reduce((sum, item) => sum + item.soldPerDay, 0) / filteredData.length;
-                
-                const xValue = x.getPixelForValue(avgProfit);
-                const yValue = y.getPixelForValue(avgSold);
-                
-                ctx.save();
-                ctx.strokeStyle = 'rgba(150, 150, 150, 0.5)';
-                ctx.setLineDash([5, 5]);
-                ctx.beginPath();
-                ctx.moveTo(xValue, top);
-                ctx.lineTo(xValue, bottom);
-                ctx.stroke();
-                
-                ctx.beginPath();
-                ctx.moveTo(left, yValue);
-                ctx.lineTo(right, yValue);
-                ctx.stroke();
-                
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-                ctx.font = '12px Arial';
-                
-                ctx.fillText('Лучшие товары', xValue + 5, yValue - 5);
-                ctx.fillText('Высокая прибыль, низкие продажи', xValue + 5, bottom - 5);
-                ctx.fillText('Низкая прибыль, высокие продажи', left + 5, yValue - 5);
-                ctx.fillText('Низкая ликвидность', left + 5, bottom - 5);
-                
-                ctx.restore();
+        // Расчет и отображение товаров
+        showBestItems(dataPoints);
+    }
+
+    // Функция для расчета и отображения товаров
+    function showBestItems(dataPoints) {
+        const bestItemsList = document.getElementById('best-items-list');
+        bestItemsList.innerHTML = '';
+        
+        // Расчет средних значений
+        const avgProfit = filteredData.reduce((sum, item) => sum + item.profitPercent, 0) / filteredData.length;
+        const avgSold = filteredData.reduce((sum, item) => sum + item.soldPerDay, 0) / filteredData.length;
+        
+        // Расчет комбинированного показателя для каждого товара
+        // Учитываем как процент прибыли, так и количество продаж в день
+        const itemsWithScore = dataPoints.map(item => {
+            // Нормализация значений относительно средних
+            const profitScore = item.x / avgProfit;
+            const soldScore = item.y / avgSold;
+            
+            // Комбинированный показатель (простое произведение нормализованных значений)
+            const combinedScore = profitScore * soldScore;
+            
+            return {
+                ...item,
+                score: combinedScore
+            };
+        });
+        
+        // Сортировка товаров по комбинированному показателю
+        const sortedItems = [...itemsWithScore]
+            .sort((a, b) => b.score - a.score);
+        
+        // Создание элементов списка для всех товаров
+        sortedItems.forEach((item, index) => {
+            const listItem = document.createElement('li');
+            listItem.dataset.index = item.dataIndex;
+            
+            const rankSpan = document.createElement('span');
+            rankSpan.className = 'item-rank';
+            rankSpan.textContent = `${index + 1}.`;
+            
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'item-name';
+            nameSpan.textContent = `${item.itemName} (${getQualityName(item.quality)})`;
+            
+            const scoreSpan = document.createElement('span');
+            scoreSpan.className = 'item-score';
+            scoreSpan.textContent = `${item.x.toFixed(1)}% / ${item.y.toFixed(1)} в день`;
+            
+            listItem.appendChild(rankSpan);
+            listItem.appendChild(nameSpan);
+            listItem.appendChild(scoreSpan);
+            
+            // Добавляем цветовую индикацию в зависимости от рейтинга
+            if (item.score > 4) {
+                listItem.style.borderLeft = '3px solid #4CAF50';
+            } else if (item.score > 2) {
+                listItem.style.borderLeft = '3px solid #FFC107';
+            } else if (item.score > 1) {
+                listItem.style.borderLeft = '3px solid #FF9800';
+            } else {
+                listItem.style.borderLeft = '3px solid #F44336';
             }
-        };
-        
-        let isDragging = false;
-        let dragStartX = 0;
-        let dragStartY = 0;
-        
-        chartCanvas.addEventListener('wheel', function(e) {
-            if (!currentChart) return;
             
-            e.preventDefault();
-            
-            const rect = chartCanvas.getBoundingClientRect();
-            const mouseX = e.clientX - rect.left;
-            const mouseY = e.clientY - rect.top;
-            
-            const zoomFactor = e.deltaY < 0 ? 0.9 : 1.1;
-            
-            const xScale = currentChart.scales.x;
-            const yScale = currentChart.scales.y;
-            
-            const xValue = xScale.getValueForPixel(mouseX);
-            const yValue = yScale.getValueForPixel(mouseY);
-            
-            const newXMin = xValue - (xValue - xScale.min) * zoomFactor;
-            const newXMax = xValue + (xScale.max - xValue) * zoomFactor;
-            const newYMin = yValue - (yValue - yScale.min) * zoomFactor;
-            const newYMax = yValue + (yScale.max - yValue) * zoomFactor;
-            
-            xScale.options.min = newXMin;
-            xScale.options.max = newXMax;
-            yScale.options.min = newYMin;
-            yScale.options.max = newYMax;
-            
-            currentChart.update();
-        });
-        
-        chartCanvas.addEventListener('mousedown', function(e) {
-            if (!currentChart || e.button !== 2) return;
-            
-            e.preventDefault();
-            
-            isDragging = true;
-            dragStartX = e.clientX;
-            dragStartY = e.clientY;
-            
-            chartCanvas.style.cursor = 'grabbing';
-        });
-        
-        chartCanvas.addEventListener('mousemove', function(e) {
-            if (!currentChart || !isDragging) return;
-            
-            e.preventDefault();
-            
-            const rect = chartCanvas.getBoundingClientRect();
-            const deltaX = e.clientX - dragStartX;
-            const deltaY = e.clientY - dragStartY;
-            
-            const xScale = currentChart.scales.x;
-            const yScale = currentChart.scales.y;
-            
-            const pixelsPerUnitX = rect.width / (xScale.max - xScale.min);
-            const pixelsPerUnitY = rect.height / (yScale.max - yScale.min);
-            
-            const deltaDataX = -deltaX / pixelsPerUnitX;
-            const deltaDataY = deltaY / pixelsPerUnitY;
-            
-            xScale.options.min += deltaDataX;
-            xScale.options.max += deltaDataX;
-            yScale.options.min += deltaDataY;
-            yScale.options.max += deltaDataY;
-            
-            currentChart.update();
-            
-            dragStartX = e.clientX;
-            dragStartY = e.clientY;
-        });
-        
-        window.addEventListener('mouseup', function(e) {
-            if (isDragging) {
-                isDragging = false;
-                chartCanvas.style.cursor = 'default';
-            }
-        });
-        
-        chartCanvas.addEventListener('contextmenu', function(e) {
-            e.preventDefault();
-        });
-        
-        currentChart = new Chart(chartCanvas, {
-            type: 'scatter',
-            data: {
-                datasets: [{
-                    label: 'Товары',
-                    data: dataPoints,
-                    backgroundColor: function(context) {
-                        const value = context.raw.profit;
-                        return value > 0 ? 'rgba(75, 192, 75, 0.6)' : 'rgba(255, 99, 132, 0.6)';
-                    },
-                    borderColor: function(context) {
-                        const value = context.raw.profit;
-                        return value > 0 ? 'rgba(75, 192, 75, 1)' : 'rgba(255, 99, 132, 1)';
-                    },
-                    pointRadius: function(context) {
-                        const value = Math.abs(context.raw.profit);
-                        return Math.min(Math.max(5, Math.log(value) * 1.5), 15);
-                    },
-                    pointHoverRadius: 15,
-                    pointHoverBorderWidth: 2,
-                    pointHoverBackgroundColor: function(context) {
-                        const value = context.raw.profit;
-                        return value > 0 ? 'rgba(75, 192, 75, 0.8)' : 'rgba(255, 99, 132, 0.8)';
-                    }
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    title: {
-                        display: true,
-                        text: 'Соотношение прибыли и объема продаж',
-                        font: {
-                            size: 18
-                        }
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                const point = context.raw;
-                                return [
-                                    `Товар: ${point.itemName}`,
-                                    `Качество: ${getQualityName(point.quality)}`,
-                                    `Процент прибыли: ${point.x.toFixed(2)}%`,
-                                    `Продаж в день: ${point.y.toFixed(2)}`,
-                                    `Абсолютная прибыль: ${point.profit.toLocaleString()} серебра`,
-                                    `Цена покупки: ${point.buyPrice.toLocaleString()} серебра`,
-                                    `Цена продажи: ${point.sellPrice.toLocaleString()} серебра`,
-                                    `Маршрут: ${point.fromLocation} → ${point.toLocation}`
-                                ];
-                            }
-                        }
-                    },
-                    legend: {
-                        display: false
-                    },
-                    quadrantLines: quadrantLines
-                },
-                scales: {
-                    y: {
-                        beginAtZero: false,
-                        title: {
-                            display: true,
-                            text: 'Продаж в день',
-                            font: {
-                                size: 14,
-                                weight: 'bold'
-                            }
-                        },
-                        grid: {
-                            color: 'rgba(0, 0, 0, 0.1)'
-                        }
-                    },
-                    x: {
-                        title: {
-                            display: true,
-                            text: 'Процент прибыли (%)',
-                            font: {
-                                size: 14,
-                                weight: 'bold'
-                            }
-                        },
-                        grid: {
-                            color: 'rgba(0, 0, 0, 0.1)'
-                        }
-                    }
-                },
-                onClick: function(e, elements) {
-                    const highlightedRows = document.querySelectorAll('tr.highlighted-item');
-                    highlightedRows.forEach(row => row.classList.remove('highlighted-item'));
+            // Обработчик клика по элементу списка
+            listItem.addEventListener('click', function() {
+                const dataIndex = parseInt(this.dataset.index);
+                
+                // Удаление предыдущих выделений
+                const highlightedRows = document.querySelectorAll('tr.highlighted-item');
+                highlightedRows.forEach(row => row.classList.remove('highlighted-item'));
+                
+                // Выделение соответствующей строки в таблице
+                const tbody = table.querySelector('tbody');
+                const rows = tbody.querySelectorAll('tr');
+                
+                if (rows.length > dataIndex) {
+                    rows[dataIndex].classList.add('highlighted-item');
                     
-                    if (elements.length > 0) {
-                        const index = elements[0].index;
-                        const dataIndex = dataPoints[index].dataIndex;
-                        
-                        const tbody = table.querySelector('tbody');
-                        const rows = tbody.querySelectorAll('tr');
-                        
-                        if (rows.length > dataIndex) {
-                            rows[dataIndex].classList.add('highlighted-item');
-                            
-                            rows[dataIndex].scrollIntoView({
-                                behavior: 'smooth',
-                                block: 'center'
-                            });
-                            
-                            statusElement.textContent = `Выбран товар: ${dataPoints[index].itemName}`;
-                        }
-                    }
+                    rows[dataIndex].scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'center'
+                    });
+                    
+                    statusElement.textContent = `Выбран товар: ${item.itemName}`;
                 }
-            },
-            plugins: [quadrantLines]
+            });
+            
+            bestItemsList.appendChild(listItem);
         });
     }
 
