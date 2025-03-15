@@ -629,6 +629,108 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
         
+        // Переменные для хранения состояния перетаскивания правой кнопкой мыши
+        let isDragging = false;
+        let dragStartX = 0;
+        let dragStartY = 0;
+        
+        // Обработчик события колесика мыши для масштабирования
+        chartCanvas.addEventListener('wheel', function(e) {
+            if (!currentChart) return;
+            
+            e.preventDefault();
+            
+            const rect = chartCanvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            
+            // Определяем коэффициент масштабирования
+            const zoomFactor = e.deltaY < 0 ? 0.9 : 1.1;
+            
+            // Получаем текущие минимальные и максимальные значения шкал
+            const xScale = currentChart.scales.x;
+            const yScale = currentChart.scales.y;
+            
+            // Вычисляем точку в координатах графика, на которую наведен курсор
+            const xValue = xScale.getValueForPixel(mouseX);
+            const yValue = yScale.getValueForPixel(mouseY);
+            
+            // Новые минимальные и максимальные значения шкал
+            const newXMin = xValue - (xValue - xScale.min) * zoomFactor;
+            const newXMax = xValue + (xScale.max - xValue) * zoomFactor;
+            const newYMin = yValue - (yValue - yScale.min) * zoomFactor;
+            const newYMax = yValue + (yScale.max - yValue) * zoomFactor;
+            
+            // Обновляем масштаб шкал
+            xScale.options.min = newXMin;
+            xScale.options.max = newXMax;
+            yScale.options.min = newYMin;
+            yScale.options.max = newYMax;
+            
+            // Обновляем график
+            currentChart.update();
+        });
+        
+        // Обработчик нажатия на правую кнопку мыши
+        chartCanvas.addEventListener('mousedown', function(e) {
+            if (!currentChart || e.button !== 2) return; // Проверяем, что это правая кнопка мыши (button = 2)
+            
+            e.preventDefault();
+            
+            isDragging = true;
+            dragStartX = e.clientX;
+            dragStartY = e.clientY;
+            
+            // Изменяем стиль курсора
+            chartCanvas.style.cursor = 'grabbing';
+        });
+        
+        // Обработчик перемещения мыши
+        chartCanvas.addEventListener('mousemove', function(e) {
+            if (!currentChart || !isDragging) return;
+            
+            e.preventDefault();
+            
+            const rect = chartCanvas.getBoundingClientRect();
+            const deltaX = e.clientX - dragStartX;
+            const deltaY = e.clientY - dragStartY;
+            
+            const xScale = currentChart.scales.x;
+            const yScale = currentChart.scales.y;
+            
+            // Вычисляем расстояние в единицах данных
+            const pixelsPerUnitX = rect.width / (xScale.max - xScale.min);
+            const pixelsPerUnitY = rect.height / (yScale.max - yScale.min);
+            
+            const deltaDataX = -deltaX / pixelsPerUnitX;
+            const deltaDataY = deltaY / pixelsPerUnitY;
+            
+            // Обновляем масштаб с новыми min/max
+            xScale.options.min += deltaDataX;
+            xScale.options.max += deltaDataX;
+            yScale.options.min += deltaDataY;
+            yScale.options.max += deltaDataY;
+            
+            currentChart.update();
+            
+            // Обновляем начальные координаты для следующего события mousemove
+            dragStartX = e.clientX;
+            dragStartY = e.clientY;
+        });
+        
+        // Обработчик отпускания кнопки мыши
+        window.addEventListener('mouseup', function(e) {
+            if (isDragging) {
+                isDragging = false;
+                chartCanvas.style.cursor = 'default';
+            }
+        });
+        
+        // Отключаем контекстное меню при правом клике на холсте графика
+        chartCanvas.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+        });
+        
         currentChart = new Chart(chartCanvas, {
             type: 'scatter',
             data: {
@@ -691,7 +793,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 },
                 scales: {
                     y: {
-                        beginAtZero: true,
+                        beginAtZero: false,
                         title: {
                             display: true,
                             text: 'Продаж в день',
