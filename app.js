@@ -641,25 +641,19 @@ class UIService {
         const soldPerDayText = scoreText.split('/')[1].trim();
         const soldPerDay = parseFloat(soldPerDayText);
         
-        // Если продаж 0 в день - сразу красим в красный
+        // Раскраска элементов по количеству продаж в день
         if (soldPerDay === 0) {
-            listItem.style.borderLeft = '3px solid #F44336';
-            return;
-        }
-        
-        // Далее стандартная логика по квартилям
-        if (score >= quartiles.q3) {
-            // Верхний квартиль - зеленый (отличные товары)
-            listItem.style.borderLeft = '3px solid #4CAF50';
-        } else if (score >= quartiles.q2) {
-            // Выше медианы - желтый (хорошие товары)
-            listItem.style.borderLeft = '3px solid #FFC107';
-        } else if (score >= quartiles.q1) {
-            // Выше нижнего квартиля - оранжевый (средние товары)
-            listItem.style.borderLeft = '3px solid #FF9800';
+            // Товары без продаж - красный
+            listItem.style.borderLeft = '4px solid #FF0000';
+        } else if (soldPerDay >= 1000) {
+            // Очень популярные товары - зеленый
+            listItem.style.borderLeft = '4px solid #4CAF50';
+        } else if (soldPerDay >= 100) {
+            // Популярные товары - тёмно-зеленый
+            listItem.style.borderLeft = '4px solid #006400';
         } else {
-            // Нижний квартиль - красный (худшие товары)
-            listItem.style.borderLeft = '3px solid #F44336';
+            // Малопопулярные товары - оранжевый
+            listItem.style.borderLeft = '4px solid #FF9800';
         }
     }
 
