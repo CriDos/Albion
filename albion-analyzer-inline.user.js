@@ -84,13 +84,14 @@
         }
         
         #analyzer-filters {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 10px;
-            padding: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            padding: 15px;
             background-color: #f5f5f5;
             border-radius: 5px;
             margin-bottom: 15px;
+            align-items: center;
         }
         
         @media (max-width: 1200px) {
@@ -114,12 +115,8 @@
         .filter-group {
             display: flex;
             flex-direction: column;
-        }
-        
-        .filter-inputs {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 5px;
+            flex: 1;
+            min-width: 180px;
         }
         
         .filter-label {
@@ -129,19 +126,17 @@
         }
         
         .filter-input {
-            padding: 5px;
+            padding: 8px;
             border: 1px solid #ccc;
-            border-radius: 3px;
+            border-radius: 4px;
             width: 100%;
             box-sizing: border-box;
         }
         
         .filter-buttons {
-            grid-column: 1 / -1;
             display: flex;
             gap: 10px;
-            justify-content: center;
-            margin-top: 10px;
+            align-items: flex-end;
         }
         
         .analyzer-button {
@@ -286,43 +281,20 @@
                     </div>
                     <div id="analyzer-filters">
                         <div class="filter-group">
-                            <label class="filter-label">Цена покупки</label>
-                            <div class="filter-inputs">
-                                <input type="number" id="min-buy-price" class="filter-input" placeholder="Мин">
-                                <input type="number" id="max-buy-price" class="filter-input" placeholder="Макс">
-                            </div>
+                            <label class="filter-label">Мин. прибыль</label>
+                            <input type="number" id="min-profit" class="filter-input" placeholder="Значение">
                         </div>
                         <div class="filter-group">
-                            <label class="filter-label">Цена продажи</label>
-                            <div class="filter-inputs">
-                                <input type="number" id="min-sell-price" class="filter-input" placeholder="Мин">
-                                <input type="number" id="max-sell-price" class="filter-input" placeholder="Макс">
-                            </div>
+                            <label class="filter-label">Мин. % прибыли</label>
+                            <input type="number" id="min-profit-percent" class="filter-input" placeholder="Значение">
                         </div>
                         <div class="filter-group">
-                            <label class="filter-label">Прибыль</label>
-                            <div class="filter-inputs">
-                                <input type="number" id="min-profit" class="filter-input" placeholder="Мин">
-                                <input type="number" id="max-profit" class="filter-input" placeholder="Макс">
-                            </div>
-                        </div>
-                        <div class="filter-group">
-                            <label class="filter-label">% прибыли</label>
-                            <div class="filter-inputs">
-                                <input type="number" id="min-profit-percent" class="filter-input" placeholder="Мин">
-                                <input type="number" id="max-profit-percent" class="filter-input" placeholder="Макс">
-                            </div>
-                        </div>
-                        <div class="filter-group">
-                            <label class="filter-label">Продаж в день</label>
-                            <div class="filter-inputs">
-                                <input type="number" id="min-sold-per-day" class="filter-input" placeholder="Мин">
-                                <input type="number" id="max-sold-per-day" class="filter-input" placeholder="Макс">
-                            </div>
+                            <label class="filter-label">Мин. продаж/день</label>
+                            <input type="number" id="min-sold-per-day" class="filter-input" placeholder="Значение">
                         </div>
                         <div class="filter-buttons">
-                            <button id="apply-filters" class="analyzer-button">Применить фильтры</button>
-                            <button id="reset-filters" class="analyzer-button">Сбросить фильтры</button>
+                            <button id="apply-filters" class="analyzer-button">Применить</button>
+                            <button id="reset-filters" class="analyzer-button">Сбросить</button>
                         </div>
                     </div>
                     <div id="analyzer-table-container">
@@ -459,23 +431,14 @@
         function applyFilters() {
             filteredData = [...data];
 
-            const minBuyPrice = parseFloat(document.getElementById('min-buy-price').value) || 0;
-            const maxBuyPrice = parseFloat(document.getElementById('max-buy-price').value) || Infinity;
-            const minSellPrice = parseFloat(document.getElementById('min-sell-price').value) || 0;
-            const maxSellPrice = parseFloat(document.getElementById('max-sell-price').value) || Infinity;
             const minProfit = parseFloat(document.getElementById('min-profit').value) || 0;
-            const maxProfit = parseFloat(document.getElementById('max-profit').value) || Infinity;
             const minProfitPercent = parseFloat(document.getElementById('min-profit-percent').value) || 0;
-            const maxProfitPercent = parseFloat(document.getElementById('max-profit-percent').value) || Infinity;
             const minSoldPerDay = parseFloat(document.getElementById('min-sold-per-day').value) || 0;
-            const maxSoldPerDay = parseFloat(document.getElementById('max-sold-per-day').value) || Infinity;
 
             filteredData = filteredData.filter(item => {
-                return item.buyPrice >= minBuyPrice && item.buyPrice <= maxBuyPrice &&
-                    item.sellPrice >= minSellPrice && item.sellPrice <= maxSellPrice &&
-                    item.profit >= minProfit && item.profit <= maxProfit &&
-                    item.profitPercent >= minProfitPercent && item.profitPercent <= maxProfitPercent &&
-                    item.soldPerDay >= minSoldPerDay && item.soldPerDay <= maxSoldPerDay;
+                return item.profit >= minProfit &&
+                    item.profitPercent >= minProfitPercent &&
+                    item.soldPerDay >= minSoldPerDay;
             });
 
             sortTable(currentSortField, true);
@@ -484,16 +447,9 @@
         }
 
         function resetFilters() {
-            document.getElementById('min-buy-price').value = '';
-            document.getElementById('max-buy-price').value = '';
-            document.getElementById('min-sell-price').value = '';
-            document.getElementById('max-sell-price').value = '';
             document.getElementById('min-profit').value = '';
-            document.getElementById('max-profit').value = '';
             document.getElementById('min-profit-percent').value = '';
-            document.getElementById('max-profit-percent').value = '';
             document.getElementById('min-sold-per-day').value = '';
-            document.getElementById('max-sold-per-day').value = '';
 
             filteredData = [...data];
 
