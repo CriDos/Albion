@@ -813,11 +813,15 @@ class UIService {
 
             if (rows.length > dataIndex) {
                 const targetRow = rows[dataIndex];
-                targetRow.classList.add('highlighted-item');
                 
+                // Используем только временную анимацию без добавления постоянного класса
                 gsap.fromTo(targetRow, 
-                    { backgroundColor: 'rgba(255, 255, 0, 0.8)' }, 
-                    { backgroundColor: 'rgba(255, 240, 0, 0.3)', duration: 1, ease: "power2.out" }
+                    { backgroundColor: 'rgba(255, 200, 0, 0.9)' }, 
+                    { 
+                        backgroundColor: 'rgba(255, 200, 0, 0)', 
+                        duration: 10, 
+                        ease: "power1.out"
+                    }
                 );
 
                 this.closeItemsRatingModal();
