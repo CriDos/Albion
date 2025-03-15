@@ -15,6 +15,36 @@
 (function () {
     'use strict';
 
+    const originalXHROpen = XMLHttpRequest.prototype.open;
+    XMLHttpRequest.prototype.open = function(method, url, async, user, password) {
+        if (url.includes('/api/transportations/sort')) {
+            url = url.replace(/count=\d+/, 'count=100');
+            
+            if (!url.includes('count=')) {
+                url += (url.includes('?') ? '&' : '?') + 'count=100';
+            }
+            
+            console.log('Модифицированный URL запроса:', url);
+        }
+        
+        return originalXHROpen.call(this, method, url, async, user, password);
+    };
+
+    const originalFetch = window.fetch;
+    window.fetch = function(resource, options) {
+        if (typeof resource === 'string' && resource.includes('/api/transportations/sort')) {
+            resource = resource.replace(/count=\d+/, 'count=100');
+            
+            if (!resource.includes('count=')) {
+                resource += (resource.includes('?') ? '&' : '?') + 'count=100';
+            }
+            
+            console.log('Модифицированный URL fetch-запроса:', resource);
+        }
+        
+        return originalFetch.call(this, resource, options);
+    };
+
     const styles = `
         #analyzer-modal {
             display: none;
@@ -513,34 +543,73 @@
     }
 
     function addAnalyzerButton() {
-        const buttonContainer = document.createElement('div');
-        buttonContainer.style.cssText = 'margin: 10px; text-align: center;';
-
-        const analyzerButton = document.createElement('button');
-        analyzerButton.textContent = 'Открыть анализатор';
+        const analyzerButton = document.createElement('a');
+        analyzerButton.textContent = 'Анализатор';
+        analyzerButton.href = '#';
+        analyzerButton.className = 'header__link header__link--purple';
         analyzerButton.style.cssText = `
-            background-color: #4CAF50;
-            border: none;
-            color: white;
-            padding: 10px 15px;
-            text-align: center;
-            text-decoration: none;
-            display: inline-block;
-            font-size: 14px;
-            margin: 10px;
+            margin-right: 10px;
             cursor: pointer;
-            border-radius: 4px;
         `;
 
-        analyzerButton.addEventListener('click', initializeAnalyzer);
+        analyzerButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            initializeAnalyzer();
+        });
 
-        buttonContainer.appendChild(analyzerButton);
+        const headerWrapper = document.querySelector('.header__wrapper');
+        if (headerWrapper) {
+            const headerLinks = headerWrapper.querySelectorAll('.header__link');
+            if (headerLinks.length > 0) {
+                headerWrapper.insertBefore(analyzerButton, headerLinks[0]);
+            } else {
+                headerWrapper.appendChild(analyzerButton);
+            }
+            console.log('Кнопка анализатора добавлена в шапку');
+        } else {
+            console.log('Не удалось найти .header__wrapper, добавляем кнопку в стандартное место');
+            const container = document.querySelector('.container') || document.body;
+            const buttonContainer = document.createElement('div');
+            buttonContainer.style.cssText = 'margin: 10px; text-align: center;';
+            
+            const fallbackButton = document.createElement('button');
+            fallbackButton.textContent = 'Открыть анализатор';
+            fallbackButton.style.cssText = `
+                background-color: #4CAF50;
+                border: none;
+                color: white;
+                padding: 10px 15px;
+                text-align: center;
+                text-decoration: none;
+                display: inline-block;
+                font-size: 14px;
+                margin: 10px;
+                cursor: pointer;
+                border-radius: 4px;
+            `;
+            
+            fallbackButton.addEventListener('click', initializeAnalyzer);
+            buttonContainer.appendChild(fallbackButton);
+            container.insertBefore(buttonContainer, container.firstChild);
+        }
+    }
 
-        const container = document.querySelector('.container') || document.body;
-        container.insertBefore(buttonContainer, container.firstChild);
+    function modifyNuxtSettings() {
+        if (window.__NUXT__ && window.__NUXT__.state && window.__NUXT__.state.transportations) {
+            const transportationsState = window.__NUXT__.state.transportations;
+            
+            if (!transportationsState.settings.count) {
+                transportationsState.settings.count = 100;
+                console.log('Добавлен параметр count=100 в настройки Nuxt.js');
+            } else if (transportationsState.settings.count !== 100) {
+                transportationsState.settings.count = 100;
+                console.log('Изменен параметр count на 100 в настройках Nuxt.js');
+            }
+        }
     }
 
     window.addEventListener('load', () => {
+        modifyNuxtSettings();
         setTimeout(addAnalyzerButton, 1000);
     });
 })();
