@@ -391,36 +391,40 @@ class UIService {
         const buttons = document.querySelectorAll('.analyzer-button');
         
         buttons.forEach(button => {
+            // Изначально устанавливаем transform-origin в центр
+            gsap.set(button, { transformOrigin: "center center", willChange: "transform" });
+            
             button.addEventListener('mouseenter', () => {
                 gsap.to(button, { 
                     scale: 1.05, 
-                    duration: 0.1, 
+                    duration: 0.1,
                     ease: "power1.out",
-                    clearProps: "filter,blur"
+                    transformPerspective: 1000,
+                    backfaceVisibility: "hidden"
                 });
             });
             
             button.addEventListener('mouseleave', () => {
                 gsap.to(button, { 
                     scale: 1, 
-                    duration: 0.1, 
-                    ease: "power1.out" 
+                    duration: 0.1,
+                    ease: "power1.out"
                 });
             });
             
             button.addEventListener('mousedown', () => {
                 gsap.to(button, { 
                     scale: 0.95, 
-                    duration: 0.08, 
-                    ease: "power1.in" 
+                    duration: 0.08,
+                    ease: "power1.in"
                 });
             });
             
             button.addEventListener('mouseup', () => {
                 gsap.to(button, { 
                     scale: 1.05, 
-                    duration: 0.08, 
-                    ease: "power1.out" 
+                    duration: 0.08,
+                    ease: "power1.out"
                 });
             });
         });
@@ -601,6 +605,32 @@ class UIService {
         itemIcon.style.flexShrink = '0';
         itemIcon.style.cursor = 'pointer';
         itemIcon.alt = item.itemName;
+        
+        // Устанавливаем начальные свойства для анимации
+        gsap.set(itemIcon, { 
+            transformOrigin: "center center", 
+            willChange: "transform",
+            transformPerspective: 1000,
+            backfaceVisibility: "hidden" 
+        });
+        
+        // Анимация при наведении
+        itemIcon.addEventListener('mouseenter', () => {
+            gsap.to(itemIcon, { 
+                scale: 1.1, 
+                duration: 0.2, 
+                ease: "power1.out" 
+            });
+        });
+        
+        // Возврат к исходному размеру
+        itemIcon.addEventListener('mouseleave', () => {
+            gsap.to(itemIcon, { 
+                scale: 1, 
+                duration: 0.2, 
+                ease: "power1.out" 
+            });
+        });
 
         itemIcon.addEventListener('click', () => {
             navigator.clipboard.writeText(item.itemName)
