@@ -1,4 +1,3 @@
-// Модуль для работы с иконками и кэшированием
 class IconService {
     constructor() {
         this.iconCache = {};
@@ -150,7 +149,6 @@ class IconService {
     }
 }
 
-// Модуль для работы с данными
 class DataService {
     constructor() {
         this.itemsData = [];
@@ -298,7 +296,7 @@ class DataService {
         const now = new Date();
         const diff = now - date;
 
-        if (diff < 86400000) { // 24 часа
+        if (diff < 86400000) {
             const hours = Math.floor(diff / 3600000);
             if (hours < 1) {
                 const minutes = Math.floor(diff / 60000);
@@ -307,7 +305,7 @@ class DataService {
             return `${hours} ч. назад`;
         }
 
-        if (diff < 604800000) { // 7 дней
+        if (diff < 604800000) {
             const days = Math.floor(diff / 86400000);
             return `${days} дн. назад`;
         }
@@ -362,13 +360,11 @@ class DataService {
     }
 }
 
-// Модуль для работы с UI
 class UIService {
     constructor(iconService, dataService) {
         this.iconService = iconService;
         this.dataService = dataService;
 
-        // Основные элементы UI
         this.fromLocationSelect = document.getElementById('from-location');
         this.toLocationSelect = document.getElementById('to-location');
         this.itemsCountInput = document.getElementById('items-count');
@@ -381,17 +377,16 @@ class UIService {
         this.tableHeaders = this.table.querySelectorAll('th');
         this.itemsRatingModal = document.getElementById('items-rating-modal');
 
-        // Состояние сортировки
-        this.currentSortField = 'profit';
+        this.currentSortField = 'soldPerDay';
         this.sortAscending = false;
+        
+        this.loadFiltersFromStorage();
     }
 
     initEventListeners() {
-        // Кнопки для работы с данными
         const buttons = document.querySelectorAll('.analyzer-button');
         
         buttons.forEach(button => {
-            // Изначально устанавливаем transform-origin в центр
             gsap.set(button, { transformOrigin: "center center", willChange: "transform" });
             
             button.addEventListener('mouseenter', () => {
@@ -434,12 +429,10 @@ class UIService {
         document.getElementById('reset-filters').addEventListener('click', () => this.resetFilters());
         document.getElementById('show-items-rating').addEventListener('click', () => this.showItemsRating());
 
-        // Сортировка таблицы
         this.tableHeaders.forEach(header => {
             header.addEventListener('click', () => this.sortTable(header.dataset.field));
         });
 
-        // Модальное окно рейтинга товаров
         document.querySelector('.close-modal').addEventListener('click', () => this.closeItemsRatingModal());
 
         window.addEventListener('click', (e) => {
@@ -448,7 +441,6 @@ class UIService {
             }
         });
 
-        // Поиск по рейтингу товаров
         document.getElementById('items-search').addEventListener('input', (e) => {
             this.filterItemRating(e.target.value);
         });
@@ -465,6 +457,9 @@ class UIService {
         try {
             await this.dataService.fetchMarketData(fromLocation, toLocation, itemsCount, sortType);
             this.sortTable(this.currentSortField, true);
+            
+            // Сохраняем настройки после успешной загрузки
+            this.saveFiltersToStorage();
         } catch (error) {
             alert(`Ошибка при загрузке данных: ${error.message}`);
         } finally {
@@ -479,6 +474,18 @@ class UIService {
 
         this.dataService.applyFilters(minProfit, minProfitPercent, minSoldPerDay);
         this.sortTable(this.currentSortField, true);
+        
+        // Сохраняем фильтры в localStorage
+        this.saveFiltersToStorage();
+        
+        // Добавим визуальное подтверждение сохранения
+        const applyButton = document.getElementById('apply-filters');
+        const originalText = applyButton.textContent;
+        applyButton.textContent = 'Сохранено ✓';
+        
+        setTimeout(() => {
+            applyButton.textContent = originalText;
+        }, 1500);
     }
 
     resetFilters() {
@@ -488,6 +495,9 @@ class UIService {
 
         this.dataService.resetFilters();
         this.sortTable(this.currentSortField, true);
+        
+        // Очищаем сохраненные фильтры
+        this.clearFiltersStorage();
     }
 
     sortTable(field, skipToggle = false) {
@@ -503,6 +513,9 @@ class UIService {
         this.dataService.sortData(field, this.sortAscending);
         this.updateTable();
         this.updateSortIndicators();
+        
+        // Сохраняем настройки сортировки
+        this.saveFiltersToStorage();
     }
 
     updateTable() {
@@ -549,37 +562,30 @@ class UIService {
     createTableRow(item) {
         const row = document.createElement('tr');
 
-        // Ячейка с иконкой и названием предмета
         row.appendChild(this.createItemCell(item));
 
-        // Качество
         const qualityCell = document.createElement('td');
         qualityCell.textContent = this.dataService.getQualityName(item.quality);
         row.appendChild(qualityCell);
 
-        // Цены и даты
         row.appendChild(this.createTextCell(item.buyPrice.toLocaleString()));
         row.appendChild(this.createTextCell(item.sellPrice.toLocaleString()));
         row.appendChild(this.createTextCell(item.buyDate));
         row.appendChild(this.createTextCell(item.sellDate));
 
-        // Локации
         row.appendChild(this.createTextCell(item.fromLocation));
         row.appendChild(this.createTextCell(item.toLocation));
 
-        // Профит
         const profitCell = document.createElement('td');
         profitCell.textContent = item.profit.toLocaleString();
         profitCell.className = item.profit > 0 ? 'profit-positive' : 'profit-negative';
         row.appendChild(profitCell);
 
-        // Процент профита
         const profitPercentCell = document.createElement('td');
         profitPercentCell.textContent = item.profitPercent.toFixed(2) + '%';
         profitPercentCell.className = item.profitPercent > 0 ? 'profit-positive' : 'profit-negative';
         row.appendChild(profitPercentCell);
 
-        // Продаж в день
         row.appendChild(this.createTextCell(item.soldPerDay.toFixed(2)));
 
         return row;
@@ -606,7 +612,6 @@ class UIService {
         itemIcon.style.cursor = 'pointer';
         itemIcon.alt = item.itemName;
         
-        // Устанавливаем начальные свойства для анимации
         gsap.set(itemIcon, { 
             transformOrigin: "center center", 
             willChange: "transform",
@@ -614,7 +619,6 @@ class UIService {
             backfaceVisibility: "hidden" 
         });
         
-        // Анимация при наведении
         itemIcon.addEventListener('mouseenter', () => {
             gsap.to(itemIcon, { 
                 scale: 1.1, 
@@ -623,7 +627,6 @@ class UIService {
             });
         });
         
-        // Возврат к исходному размеру
         itemIcon.addEventListener('mouseleave', () => {
             gsap.to(itemIcon, { 
                 scale: 1, 
@@ -736,13 +739,12 @@ class UIService {
         const bestItemsList = document.getElementById('best-items-list');
         bestItemsList.innerHTML = '';
 
-        // Вычисляем квартили для более корректного распределения цветов
         const scores = sortedItems.map(item => item.score);
         scores.sort((a, b) => a - b);
         
         const quartiles = {
             q3: scores[Math.floor(scores.length * 0.75)],
-            q2: scores[Math.floor(scores.length * 0.5)], // медиана
+            q2: scores[Math.floor(scores.length * 0.5)],
             q1: scores[Math.floor(scores.length * 0.25)]
         };
 
@@ -784,23 +786,17 @@ class UIService {
     }
 
     styleRatingItem(listItem, score, quartiles) {
-        // Получаем значение продаж в день из текста элемента
         const scoreText = listItem.querySelector('.item-score').textContent;
         const soldPerDayText = scoreText.split('/')[1].trim();
         const soldPerDay = parseFloat(soldPerDayText);
         
-        // Раскраска элементов по количеству продаж в день
         if (soldPerDay === 0) {
-            // Товары без продаж - красный
             listItem.style.borderLeft = '4px solid #FF0000';
         } else if (soldPerDay >= 1000) {
-            // Очень популярные товары - зеленый
             listItem.style.borderLeft = '4px solid #4CAF50';
         } else if (soldPerDay >= 100) {
-            // Популярные товары - тёмно-зеленый
             listItem.style.borderLeft = '4px solid #006400';
         } else {
-            // Малопопулярные товары - оранжевый
             listItem.style.borderLeft = '4px solid #FF9800';
         }
     }
@@ -824,10 +820,8 @@ class UIService {
                     { backgroundColor: 'rgba(255, 240, 0, 0.3)', duration: 1, ease: "power2.out" }
                 );
 
-                // Закрываем модальное окно плавно
                 this.closeItemsRatingModal();
                 
-                // Плавная прокрутка с задержкой для закрытия модального окна
                 setTimeout(() => {
                     targetRow.scrollIntoView({
                         behavior: 'smooth',
@@ -855,9 +849,50 @@ class UIService {
             }
         });
     }
+
+    saveFiltersToStorage() {
+        const filters = {
+            fromLocation: this.fromLocationSelect.value,
+            toLocation: this.toLocationSelect.value,
+            itemsCount: this.itemsCountInput.value,
+            sortType: this.sortTypeSelect.value,
+            minProfit: this.minProfitInput.value,
+            minProfitPercent: this.minProfitPercentInput.value,
+            minSoldPerDay: this.minSoldPerDayInput.value,
+            currentSortField: this.currentSortField,
+            sortAscending: this.sortAscending
+        };
+        
+        localStorage.setItem('albionFilters', JSON.stringify(filters));
+    }
+
+    loadFiltersFromStorage() {
+        const savedFilters = localStorage.getItem('albionFilters');
+        
+        if (savedFilters) {
+            try {
+                const filters = JSON.parse(savedFilters);
+                
+                if (filters.fromLocation) this.fromLocationSelect.value = filters.fromLocation;
+                if (filters.toLocation) this.toLocationSelect.value = filters.toLocation;
+                if (filters.itemsCount) this.itemsCountInput.value = filters.itemsCount;
+                if (filters.sortType) this.sortTypeSelect.value = filters.sortType;
+                if (filters.minProfit) this.minProfitInput.value = filters.minProfit;
+                if (filters.minProfitPercent) this.minProfitPercentInput.value = filters.minProfitPercent;
+                if (filters.minSoldPerDay) this.minSoldPerDayInput.value = filters.minSoldPerDay;
+                if (filters.currentSortField) this.currentSortField = filters.currentSortField;
+                if (filters.sortAscending !== undefined) this.sortAscending = filters.sortAscending;
+            } catch (error) {
+                console.error('Ошибка при загрузке сохраненных фильтров:', error);
+            }
+        }
+    }
+
+    clearFiltersStorage() {
+        localStorage.removeItem('albionFilters');
+    }
 }
 
-// Основной класс приложения
 class App {
     constructor() {
         this.iconService = new IconService();
@@ -869,9 +904,12 @@ class App {
         try {
             await this.dataService.loadItemsData();
             this.uiService.initEventListeners();
+            
+            // Загружаем настройки фильтров из localStorage,
+            // но не запускаем автоматически загрузку данных
+            this.uiService.updateSortIndicators();
             this.uiService.updateTable();
             
-            // Добавляю анимации при загрузке страницы
             this.initPageAnimations();
         } catch (error) {
             console.error('Ошибка инициализации приложения:', error);
@@ -880,10 +918,8 @@ class App {
     }
     
     initPageAnimations() {
-        // Анимация заголовка
         gsap.from('h1', { opacity: 0, y: -20, duration: 0.8, ease: "power2.out" });
         
-        // Анимация панелей фильтров
         gsap.from('#locations-filter', { 
             opacity: 0, 
             y: -10, 
@@ -900,7 +936,6 @@ class App {
             ease: "power1.out" 
         });
         
-        // Анимация контейнера таблицы
         gsap.from('#analyzer-table-container', { 
             opacity: 0, 
             scale: 0.95, 
@@ -909,15 +944,13 @@ class App {
             ease: "power2.out" 
         });
         
-        // Добавляем класс для плавных переходов всем важным элементам
         document.querySelectorAll('button, select, input').forEach(element => {
             element.classList.add('animated-transition');
         });
     }
 }
 
-// Инициализация приложения
 document.addEventListener('DOMContentLoaded', () => {
     const app = new App();
     app.init();
-}); 
+});
