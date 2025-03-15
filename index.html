@@ -209,6 +209,14 @@
                 <label class="filter-label">Количество товаров</label>
                 <input type="number" id="items-count" class="filter-input" value="100" min="10" max="500">
             </div>
+            <div class="filter-group">
+                <label class="filter-label">Тип сортировки</label>
+                <select id="sort-type" class="filter-input">
+                    <option value="BY_PROFIT">По профиту в серебре</option>
+                    <option value="BY_PERCENTAGE_PROFIT" selected>По профиту в процентах</option>
+                    <option value="BY_PROFIT_VOLUME">По объему профита</option>
+                </select>
+            </div>
             <div class="filter-buttons">
                 <button id="fetch-data" class="analyzer-button">Загрузить данные</button>
             </div>
@@ -246,8 +254,8 @@
                         <th data-field="quality">Качество</th>
                         <th data-field="buyPrice">Цена покупки</th>
                         <th data-field="sellPrice">Цена продажи</th>
-                        <th data-field="buyDate">Время обновления (покупка)</th>
-                        <th data-field="sellDate">Время обновления (продажа)</th>
+                        <th data-field="buyDate">Обн. покупки</th>
+                        <th data-field="sellDate">Обн. продажи</th>
                         <th data-field="fromLocation">Откуда</th>
                         <th data-field="toLocation">Куда</th>
                         <th data-field="profit" class="sort-desc">Прибыль</th>

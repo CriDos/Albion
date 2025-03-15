@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const fromLocationSelect = document.getElementById('from-location');
     const toLocationSelect = document.getElementById('to-location');
     const itemsCountInput = document.getElementById('items-count');
+    const sortTypeSelect = document.getElementById('sort-type');
     const fetchDataButton = document.getElementById('fetch-data');
     const applyFiltersButton = document.getElementById('apply-filters');
     const resetFiltersButton = document.getElementById('reset-filters');
@@ -103,13 +104,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const fromLocation = encodeURIComponent(fromLocationSelect.value);
         const toLocation = encodeURIComponent(toLocationSelect.value);
         const itemsCount = parseInt(itemsCountInput.value) || 100;
+        const sortType = sortTypeSelect.value;
         
         if (fromLocation === toLocation) {
             alert('Выберите разные локации для отправления и получения');
             return;
         }
         
-        const url = `https://albion-profit-calculator.com/api/transportations/sort?from=${fromLocation}&to=${toLocation}&count=${itemsCount}&skip=0&sort=BY_LAST_TIME_CHECKED,BY_PERCENTAGE_PROFIT&serverId=aod_europe`;
+        const url = `https://albion-profit-calculator.com/api/transportations/sort?from=${fromLocation}&to=${toLocation}&count=${itemsCount}&skip=0&sort=BY_LAST_TIME_CHECKED,${sortType}&serverId=aod_europe`;
         
         showLoading(true);
         statusElement.textContent = 'Загрузка данных...';
@@ -261,7 +263,30 @@ document.addEventListener('DOMContentLoaded', () => {
             itemIcon.style.height = '64px';
             itemIcon.style.marginRight = '8px';
             itemIcon.style.flexShrink = '0';
+            itemIcon.style.cursor = 'pointer';
             itemIcon.alt = item.itemName;
+            
+            // Обработчик клика для копирования названия предмета
+            itemIcon.addEventListener('click', function() {
+                navigator.clipboard.writeText(item.itemName)
+                    .then(() => {
+                        // Добавляем визуальную обратную связь
+                        const originalBorder = this.style.border;
+                        this.style.border = '2px solid #4CAF50';
+                        
+                        // Показываем статус
+                        statusElement.textContent = `Название "${item.itemName}" скопировано в буфер обмена`;
+                        
+                        // Возвращаем исходный стиль через 1 секунду
+                        setTimeout(() => {
+                            this.style.border = originalBorder;
+                        }, 1000);
+                    })
+                    .catch(err => {
+                        console.error('Ошибка при копировании в буфер обмена:', err);
+                        statusElement.textContent = 'Не удалось скопировать название в буфер обмена';
+                    });
+            });
             
             // Получаем URL иконки и загружаем её с использованием кэша
             const iconUrl = getItemIconUrl(item.itemId);
