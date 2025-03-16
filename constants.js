@@ -19,6 +19,29 @@ export const API_CONFIG = {
     }
 };
 
+// Локации
+export const LOCATIONS = {
+    CITIES: [
+        'Lymhurst',
+        'Martlock',
+        'Bridgewatch',
+        'Fort Sterling',
+        'Thetford',
+        'Caerleon'
+    ],
+    BLACK_MARKET: 'Black Market',
+    
+    // Получить все локации, включая Черный рынок
+    getAllLocations() {
+        return [...this.CITIES, this.BLACK_MARKET];
+    },
+    
+    // Получить только города (без Черного рынка)
+    getCities() {
+        return [...this.CITIES];
+    }
+};
+
 // Налоговые ставки
 export const TAX_RATES = {
     MARKET_FEE: 0.025, // Сбор за размещение заказов (2.5%)

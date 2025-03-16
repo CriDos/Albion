@@ -1,7 +1,7 @@
 import { IconService } from './services/IconService.js';
 import { DataService } from './services/DataService.js';
 import { UIService } from './services/UIService.js';
-import { APP_CONFIG } from './constants.js';
+import { APP_CONFIG, LOCATIONS, TAX_RATES, QUALITY_NAMES, ICON_CONFIG, UI_CONFIG, STORAGE_KEYS } from './constants.js';
 
 class App {
     constructor() {
@@ -63,7 +63,48 @@ class App {
     }
 }
 
+// Инициализация выпадающих списков локаций
+function initLocationSelects() {
+    const fromLocationSelect = document.getElementById('from-location');
+    const toLocationSelect = document.getElementById('to-location');
+    const priceHistoryLocationSelect = document.getElementById('price-history-location');
+    
+    // Очищаем существующие опции
+    fromLocationSelect.innerHTML = '';
+    toLocationSelect.innerHTML = '';
+    priceHistoryLocationSelect.innerHTML = '';
+    
+    // Заполняем селект "Откуда" только городами
+    LOCATIONS.getCities().forEach(city => {
+        const option = document.createElement('option');
+        option.value = city;
+        option.textContent = city;
+        fromLocationSelect.appendChild(option);
+    });
+    
+    // Заполняем селект "Куда" всеми локациями
+    LOCATIONS.getAllLocations().forEach(location => {
+        const option = document.createElement('option');
+        option.value = location;
+        option.textContent = location;
+        toLocationSelect.appendChild(option);
+    });
+    
+    // Установка Black Market как значения по умолчанию для "Куда"
+    toLocationSelect.value = LOCATIONS.BLACK_MARKET;
+    
+    // Заполняем селект в модальном окне истории цен
+    LOCATIONS.getAllLocations().forEach(location => {
+        const option = document.createElement('option');
+        option.value = location;
+        option.textContent = location;
+        priceHistoryLocationSelect.appendChild(option);
+    });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+    initLocationSelects();
+    
     const app = new App();
     app.init();
 });
