@@ -19,7 +19,6 @@ export class UIService {
         this.itemsRatingModal = document.getElementById('items-rating-modal');
         this.priceHistoryModal = document.getElementById('price-history-modal');
         this.priceHistoryChart = null;
-        this.historyLocationSelect = document.getElementById('price-history-location');
         this.showLastDayOnlyCheckbox = document.getElementById('show-last-day-only');
         this.currentHistoryItem = null;
 
@@ -29,7 +28,6 @@ export class UIService {
         this.selectedItemIds = [];
 
         this.loadFiltersFromStorage();
-        this.loadHistoryLocationFromStorage();
         this.loadShowLastDayOnlyFromStorage();
     }
 
@@ -109,13 +107,6 @@ export class UIService {
 
         document.getElementById('items-search').addEventListener('input', (e) => {
             this.filterItemRating(e.target.value);
-        });
-        
-        this.historyLocationSelect.addEventListener('change', () => {
-            this.saveHistoryLocationToStorage();
-            if (this.currentHistoryItem) {
-                this.showPriceHistory(this.currentHistoryItem);
-            }
         });
         
         this.showLastDayOnlyCheckbox.addEventListener('change', () => {
@@ -289,7 +280,7 @@ export class UIService {
         // Создаем кнопку графика
         const chartButton = document.createElement('span');
         chartButton.innerHTML = '📊';
-        chartButton.title = 'Показать график';
+        chartButton.title = 'Показать статистику цен';
         chartButton.style.cursor = 'pointer';
         chartButton.style.marginRight = '10px';
         chartButton.style.fontSize = '18px';
@@ -656,17 +647,6 @@ export class UIService {
         }
     }
     
-    saveHistoryLocationToStorage() {
-        localStorage.setItem(STORAGE_KEYS.HISTORY_LOCATION, this.historyLocationSelect.value);
-    }
-    
-    loadHistoryLocationFromStorage() {
-        const savedLocation = localStorage.getItem(STORAGE_KEYS.HISTORY_LOCATION);
-        if (savedLocation) {
-            this.historyLocationSelect.value = savedLocation;
-        }
-    }
-    
     saveShowLastDayOnlyToStorage() {
         localStorage.setItem(STORAGE_KEYS.SHOW_LAST_DAY_ONLY, this.showLastDayOnlyCheckbox.checked);
     }
@@ -710,89 +690,63 @@ export class UIService {
         this.openPriceHistoryModal();
         
         try {
-            const priceTable = document.getElementById('current-prices-table');
-            priceTable.innerHTML = `
-                <tr>
-                    <th>Качество</th>
-                    <th>Средняя цена</th>
-                    <th>Мин. цена</th>
-                    <th>Макс. цена</th>
-                    <th>Обновлено</th>
-                    <th>Всего продаж</th>
-                    <th>Продажи за 24ч</th>
-                </tr>
-                <tr>
-                    <td colspan="7" style="text-align: center;">Загрузка данных...</td>
-                </tr>
-            `;
+            const fromLocationTable = document.getElementById('from-location-prices-table');
+            const toLocationTable = document.getElementById('to-location-prices-table');
+
+            // Устанавливаем названия локаций
+            document.getElementById('from-location-name').textContent = this.fromLocationSelect.value;
+            document.getElementById('to-location-name').textContent = this.toLocationSelect.value;
             
-            const selectedLocation = this.historyLocationSelect.value;
+            // Инициализация таблиц
+            const fromTableBody = fromLocationTable.querySelector('tbody');
+            fromTableBody.innerHTML = '<tr><td colspan="7" style="text-align: center;">Загрузка данных...</td></tr>';
             
-            const historyData = await this.dataService.getPriceHistory(item.itemId, selectedLocation);
+            const toTableBody = toLocationTable.querySelector('tbody');
+            toTableBody.innerHTML = '<tr><td colspan="7" style="text-align: center;">Загрузка данных...</td></tr>';
             
-            this.historyData = historyData;
+            // Получаем данные для двух локаций
+            const fromLocation = this.fromLocationSelect.value;
+            const toLocation = this.toLocationSelect.value;
             
-            const currentPrices = await this.dataService.getCurrentPrices(item.itemId, selectedLocation);
+            // Загрузка данных для первой локации (откуда)
+            const fromHistoryData = await this.dataService.getPriceHistory(item.itemId, fromLocation);
+            const fromCurrentPrices = await this.dataService.getCurrentPrices(item.itemId, fromLocation);
             
-            const salesStats = this.dataService.calculateTotalSales(historyData);
+            // Загрузка данных для второй локации (куда)
+            const toHistoryData = await this.dataService.getPriceHistory(item.itemId, toLocation);
+            const toCurrentPrices = await this.dataService.getCurrentPrices(item.itemId, toLocation);
             
-            this.renderOptimizedPriceTable(historyData, currentPrices, this.showLastDayOnlyCheckbox.checked);
+            // Сохраняем данные
+            this.historyFromData = fromHistoryData;
+            this.historyToData = toHistoryData;
+            
+            // Отображаем таблицы
+            this.renderOptimizedPriceTable(fromHistoryData, fromCurrentPrices, this.showLastDayOnlyCheckbox.checked, fromLocationTable, true);
+            this.renderOptimizedPriceTable(toHistoryData, toCurrentPrices, this.showLastDayOnlyCheckbox.checked, toLocationTable, false);
             
         } catch (error) {
             console.error('Ошибка при загрузке данных:', error);
             
-            const priceTable = document.getElementById('current-prices-table');
-            priceTable.innerHTML = `
-                <tr>
-                    <th>Качество</th>
-                    <th>Средняя цена</th>
-                    <th>Мин. цена</th>
-                    <th>Макс. цена</th>
-                    <th>Обновлено</th>
-                    <th>Всего продаж</th>
-                    <th>Продажи за 24ч</th>
-                </tr>
-                <tr>
-                    <td colspan="7" style="text-align: center; color: red;">Ошибка при загрузке данных</td>
-                </tr>
-            `;
+            const fromTableBody = document.getElementById('from-location-prices-table').querySelector('tbody');
+            fromTableBody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: red;">Ошибка при загрузке данных</td></tr>';
             
-            this.historyData = null;
+            const toTableBody = document.getElementById('to-location-prices-table').querySelector('tbody');
+            toTableBody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: red;">Ошибка при загрузке данных</td></tr>';
+            
+            this.historyFromData = null;
+            this.historyToData = null;
         }
     }
 
-    renderOptimizedPriceTable(historyData, currentPrices, showLastDayOnly) {
-        const table = document.getElementById('current-prices-table');
+    renderOptimizedPriceTable(historyData, currentPrices, showLastDayOnly, table, isFromLocation) {
+        const tbody = table.querySelector('tbody');
         
         if (!historyData || historyData.length === 0 || !currentPrices || currentPrices.length === 0) {
-            table.innerHTML = `
-                <tr>
-                    <th>Качество</th>
-                    <th>Средняя цена</th>
-                    <th>Мин. цена</th>
-                    <th>Макс. цена</th>
-                    <th>Обновлено</th>
-                    <th>Всего продаж</th>
-                    <th>Продажи за 24ч</th>
-                </tr>
-                <tr>
-                    <td colspan="7" style="text-align: center;">Нет данных о ценах</td>
-                </tr>
-            `;
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">Нет данных о ценах</td></tr>';
             return;
         }
         
-        table.innerHTML = `
-            <tr>
-                <th>Качество</th>
-                <th>Средняя цена</th>
-                <th>Мин. цена</th>
-                <th>Макс. цена</th>
-                <th>Обновлено</th>
-                <th>Всего продаж</th>
-                <th>Продажи за 24ч</th>
-            </tr>
-        `;
+        tbody.innerHTML = '';
         
         const now = new Date();
         const oneDayAgo = new Date(now.getTime() - UI_CONFIG.TIME_CONSTANTS.DAY_MS);
@@ -862,15 +816,19 @@ export class UIService {
             avgPriceCell.textContent = calculatedData.avgPrice > 0 ? calculatedData.avgPrice.toLocaleString() : '—';
             row.appendChild(avgPriceCell);
             
-            const sellPriceMinCell = document.createElement('td');
-            sellPriceMinCell.textContent = item.sell_price_min > 0 ? item.sell_price_min.toLocaleString() : '—';
-            row.appendChild(sellPriceMinCell);
+            // Отображаем разные данные в зависимости от локации
+            const priceMinCell = document.createElement('td');
+            // Используем sell_price_min для обеих локаций, т.к. API не предоставляет данные о ценах покупки (buy_price_min всегда 0)
+            priceMinCell.textContent = item.sell_price_min > 0 ? item.sell_price_min.toLocaleString() : '—';
+            row.appendChild(priceMinCell);
             
-            const sellPriceMaxCell = document.createElement('td');
-            sellPriceMaxCell.textContent = item.sell_price_max > 0 ? item.sell_price_max.toLocaleString() : '—';
-            row.appendChild(sellPriceMaxCell);
+            const priceMaxCell = document.createElement('td');
+            // Используем sell_price_max для обеих локаций
+            priceMaxCell.textContent = item.sell_price_max > 0 ? item.sell_price_max.toLocaleString() : '—';
+            row.appendChild(priceMaxCell);
             
             const updateDateCell = document.createElement('td');
+            // Используем sell_price_min_date для обеих локаций
             updateDateCell.textContent = this.formatPriceDate(item.sell_price_min_date);
             row.appendChild(updateDateCell);
             
@@ -882,7 +840,7 @@ export class UIService {
             recentSalesCell.textContent = calculatedData.last24hSales.toLocaleString();
             row.appendChild(recentSalesCell);
             
-            table.appendChild(row);
+            tbody.appendChild(row);
         });
     }
     

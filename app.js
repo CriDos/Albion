@@ -67,12 +67,10 @@ class App {
 function initLocationSelects() {
     const fromLocationSelect = document.getElementById('from-location');
     const toLocationSelect = document.getElementById('to-location');
-    const priceHistoryLocationSelect = document.getElementById('price-history-location');
     
     // Очищаем существующие опции
     fromLocationSelect.innerHTML = '';
     toLocationSelect.innerHTML = '';
-    priceHistoryLocationSelect.innerHTML = '';
     
     // Заполняем селект "Откуда" только городами
     LOCATIONS.getCities().forEach(city => {
@@ -92,14 +90,6 @@ function initLocationSelects() {
     
     // Установка Black Market как значения по умолчанию для "Куда"
     toLocationSelect.value = LOCATIONS.BLACK_MARKET;
-    
-    // Заполняем селект в модальном окне истории цен
-    LOCATIONS.getAllLocations().forEach(location => {
-        const option = document.createElement('option');
-        option.value = location;
-        option.textContent = location;
-        priceHistoryLocationSelect.appendChild(option);
-    });
 }
 
 document.addEventListener('DOMContentLoaded', () => {

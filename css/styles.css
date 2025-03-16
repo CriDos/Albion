@@ -661,4 +661,45 @@ tr.copied-item {
 #current-prices-table tr:hover,
 #average-prices-table tr:hover {
     background-color: #f1f1f1;
+}
+
+/* Стили для таблиц в модальном окне статистики цен */
+#from-location-prices-table,
+#to-location-prices-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 10px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+#from-location-prices-table th, 
+#to-location-prices-table th {
+    background-color: #f2f2f2;
+    border: 1px solid #ddd;
+    padding: 12px 8px;
+    text-align: left;
+    font-weight: bold;
+    color: #333;
+}
+
+#from-location-prices-table td,
+#to-location-prices-table td {
+    border: 1px solid #ddd;
+    padding: 10px 8px;
+    text-align: right;
+}
+
+#from-location-prices-table td:first-child,
+#to-location-prices-table td:first-child {
+    text-align: left;
+}
+
+#from-location-prices-table tr:nth-child(even),
+#to-location-prices-table tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+#from-location-prices-table tr:hover,
+#to-location-prices-table tr:hover {
+    background-color: #f1f1f1;
 } 

@@ -6,6 +6,41 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Анализатор рынка Albion Online</title>
     <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .table-wrapper {
+            width: 100%;
+        }
+        
+        .modal-content {
+            max-width: 90vw;
+            max-height: 90vh;
+            overflow: auto;
+        }
+        
+        #price-history-container {
+            max-width: 100%;
+        }
+        
+        #price-history-modal table {
+            width: 100%;
+            table-layout: fixed;
+            font-size: 0.9em;
+        }
+        
+        #price-history-modal th, #price-history-modal td {
+            padding: 5px;
+            text-align: center;
+            word-wrap: break-word;
+        }
+        
+        #price-history-modal th:first-child, #price-history-modal td:first-child {
+            width: 10%;
+        }
+        
+        #price-history-modal th:nth-child(n+2), #price-history-modal td:nth-child(n+2) {
+            width: 15%;
+        }
+    </style>
 </head>
 
 <body>
@@ -127,33 +162,56 @@
             <div class="modal-body">
                 <div id="price-history-container">
                     <div class="history-location-selector">
-                        <label for="price-history-location">Локация:</label>
-                        <select id="price-history-location" class="filter-input">
-                            <!-- Локации будут добавлены из JavaScript -->
-                        </select>
-                        
-                        <div style="display: flex; align-items: center; margin-left: 20px;">
+                        <div style="display: flex; align-items: center;">
                             <input type="checkbox" id="show-last-day-only" checked>
                             <label for="show-last-day-only" style="margin-left: 5px;">Только за последние 24 часа</label>
                         </div>
                     </div>
                     
                     <div class="price-table-container">
-                        <h3>Сводная информация о ценах</h3>
+                        <h3>Цены в локации <span id="from-location-name"></span></h3>
                         <div class="table-wrapper">
-                            <table id="current-prices-table">
-                                <tr>
-                                    <th>Качество</th>
-                                    <th>Средняя цена</th>
-                                    <th>Мин. цена</th>
-                                    <th>Макс. цена</th>
-                                    <th>Обновлено</th>
-                                    <th>Всего продаж</th>
-                                    <th>Продажи за 24ч</th>
-                                </tr>
-                                <tr>
-                                    <td colspan="7" style="text-align: center;">Нет данных</td>
-                                </tr>
+                            <table id="from-location-prices-table">
+                                <thead>
+                                    <tr>
+                                        <th>Качество</th>
+                                        <th>Средняя цена</th>
+                                        <th>Мин. цена</th>
+                                        <th>Макс. цена</th>
+                                        <th>Обновлено</th>
+                                        <th>Всего продаж</th>
+                                        <th>Продажи за 24ч</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td colspan="7" style="text-align: center;">Нет данных</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="price-table-container" style="margin-top: 20px;">
+                        <h3>Цены в локации <span id="to-location-name"></span></h3>
+                        <div class="table-wrapper">
+                            <table id="to-location-prices-table">
+                                <thead>
+                                    <tr>
+                                        <th>Качество</th>
+                                        <th>Средняя цена</th>
+                                        <th>Мин. цена</th>
+                                        <th>Макс. цена</th>
+                                        <th>Обновлено</th>
+                                        <th>Всего продаж</th>
+                                        <th>Продажи за 24ч</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td colspan="7" style="text-align: center;">Нет данных</td>
+                                    </tr>
+                                </tbody>
                             </table>
                         </div>
                     </div>
