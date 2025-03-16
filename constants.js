@@ -42,6 +42,7 @@ export const ICON_CONFIG = {
     DB_VERSION: 1, // Версия базы данных
     STORE_NAME: 'icons', // Имя хранилища в базе данных
     BLANK_IMAGE: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', // Пустое изображение для ошибок
+    PROXY_URL: 'https://api.cors.lol/?url=', // URL прокси-сервиса для обхода CORS
     ANIMATION: {
         TOOLTIP_DURATION: 0.3, // Длительность анимации всплывающих подсказок
         TOOLTIP_DELAY: 1 // Задержка перед скрытием всплывающей подсказки

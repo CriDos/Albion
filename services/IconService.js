@@ -138,7 +138,9 @@ export class IconService {
         };
 
         imgElement.onload = () => {
-            fetch(url)
+            const proxyUrl = ICON_CONFIG.PROXY_URL + encodeURIComponent(url);
+
+            fetch(proxyUrl)
                 .then(response => {
                     if (!response.ok) throw new Error('Ошибка сети при загрузке иконки');
                     return response.blob();
