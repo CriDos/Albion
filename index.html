@@ -446,6 +446,60 @@
             }
         }
 
+        /* Стили для модального окна истории цен */
+        #price-history-modal .modal-content {
+            display: flex;
+            flex-direction: column;
+            height: auto;
+            max-height: 90vh;
+        }
+
+        #price-history-modal .modal-body {
+            padding: 15px;
+            overflow: visible;
+            max-height: none;
+        }
+
+        #price-history-chart {
+            width: 100%;
+            height: 300px !important;
+        }
+
+        #price-history-stats {
+            margin-top: 10px;
+        }
+
+        #price-history-stats > div {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: space-between;
+        }
+
+        #price-history-stats > div > div {
+            flex: 1;
+            min-width: 200px;
+            margin-bottom: 5px;
+            padding: 8px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+        }
+
+        .history-location-selector {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .history-location-selector label {
+            margin-right: 10px;
+            font-weight: bold;
+        }
+        
+        .history-location-selector select {
+            width: 180px;
+        }
+
         @media (max-width: 768px) {
             .filter-group {
                 grid-template-columns: 1fr;
@@ -491,6 +545,21 @@
             .filter-buttons {
                 margin-left: auto;
             }
+        }
+
+        #price-history-modal .modal-header {
+            padding: 15px;
+            border-bottom: 1px solid #ddd;
+            position: relative;
+        }
+
+        #price-history-item-icon {
+            width: 40px;
+            height: 40px;
+            margin-right: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            background-color: rgba(0, 0, 0, 0.03);
         }
     </style>
 </head>
@@ -605,6 +674,60 @@
                                 class="filter-input" style="width: 300px;">
                         </div>
                         <ul id="best-items-list"></ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="price-history-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="close-price-history-modal">&times;</span>
+                <div style="display: flex; align-items: center;">
+                    <img id="price-history-item-icon" style="width: 40px; height: 40px; margin-right: 10px;" src="">
+                    <h2>История цен <span id="price-history-item-name"></span></h2>
+                </div>
+            </div>
+            <div class="modal-body">
+                <div id="price-history-container">
+                    <div class="history-location-selector">
+                        <label for="price-history-location">Локация:</label>
+                        <select id="price-history-location" class="filter-input">
+                            <option value="Black Market">Black Market</option>
+                            <option value="Lymhurst">Lymhurst</option>
+                            <option value="Martlock">Martlock</option>
+                            <option value="Bridgewatch">Bridgewatch</option>
+                            <option value="Fort Sterling">Fort Sterling</option>
+                            <option value="Thetford">Thetford</option>
+                            <option value="Caerleon">Caerleon</option>
+                        </select>
+                        
+                        <div style="display: flex; align-items: center; margin-left: 20px;">
+                            <input type="checkbox" id="show-last-day-only" checked>
+                            <label for="show-last-day-only" style="margin-left: 5px;">Только за последние 24 часа</label>
+                        </div>
+                    </div>
+                    <canvas id="price-history-chart"></canvas>
+                    <div id="price-history-stats">
+                        <div>
+                            <div>
+                                <div style="font-weight: bold;">Минимальная цена (24ч):</div>
+                                <div id="price-min">-</div>
+                            </div>
+                            <div>
+                                <div style="font-weight: bold;">Максимальная цена (24ч):</div>
+                                <div id="price-max">-</div>
+                            </div>
+                            <div>
+                                <div style="font-weight: bold;">Средняя цена (24ч):</div>
+                                <div id="price-avg">-</div>
+                            </div>
+                            <div>
+                                <div style="font-weight: bold;">Продаж за 24ч:</div>
+                                <div id="total-sales">-</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
