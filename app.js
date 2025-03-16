@@ -380,6 +380,9 @@ class UIService {
         this.currentSortField = 'soldPerDay';
         this.sortAscending = false;
         
+        // Массив выделенных itemId
+        this.selectedItemIds = [];
+        
         this.loadFiltersFromStorage();
     }
 
@@ -568,6 +571,12 @@ class UIService {
 
     createTableRow(item) {
         const row = document.createElement('tr');
+        row.dataset.itemId = item.itemId;
+        
+        // Проверяем, есть ли этот предмет в списке выделенных
+        if (this.selectedItemIds.includes(item.itemId)) {
+            row.classList.add('copied-item');
+        }
 
         row.appendChild(this.createItemCell(item));
 
@@ -643,6 +652,23 @@ class UIService {
         });
 
         itemIcon.addEventListener('click', () => {
+            // Найти родительскую строку
+            const row = cell.closest('tr');
+            
+            // Добавляем или удаляем itemId из списка выделенных
+            const itemIndex = this.selectedItemIds.indexOf(item.itemId);
+            if (itemIndex === -1) {
+                // Добавляем ID в массив выделенных
+                this.selectedItemIds.push(item.itemId);
+                // Добавляем класс выделения к текущей строке
+                row.classList.add('copied-item');
+            } else {
+                // Удаляем ID из массива выделенных
+                this.selectedItemIds.splice(itemIndex, 1);
+                // Удаляем класс выделения
+                row.classList.remove('copied-item');
+            }
+            
             navigator.clipboard.writeText(item.itemName)
                 .then(() => {
                     this.iconService.showCopyTooltip(itemIcon, "Скопировано!");
