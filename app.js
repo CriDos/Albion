@@ -38,16 +38,17 @@ class IconService {
         this.tooltip.style.left = `${rect.left + (rect.width / 2)}px`;
         this.tooltip.style.top = `${rect.top - 30}px`;
         this.tooltip.style.transform = 'translate(-50%, 0)';
-        
-        gsap.fromTo(this.tooltip, 
-            { opacity: 0, y: 10 }, 
-            { opacity: 1, y: 0, duration: 0.3, 
+
+        gsap.fromTo(this.tooltip,
+            { opacity: 0, y: 10 },
+            {
+                opacity: 1, y: 0, duration: 0.3,
                 onComplete: () => {
-                    gsap.to(this.tooltip, { 
-                        opacity: 0, 
-                        y: -10, 
-                        delay: 1, 
-                        duration: 0.3 
+                    gsap.to(this.tooltip, {
+                        opacity: 0,
+                        y: -10,
+                        delay: 1,
+                        duration: 0.3
                     });
                 }
             }
@@ -235,12 +236,17 @@ class DataService {
             const profitPercent = buyPrice > 0 ? (profit / buyPrice) * 100 : 0;
             const soldPerDay = toItem.averageItems || 0;
 
+            const itemProfit = sellPrice * 0.935 - buyPrice;
+            const itemProfitPercent = buyPrice > 0 ? (itemProfit / buyPrice) * 100 : 0;
+
             return {
                 itemId: fromItem.itemId,
                 itemName: this.getItemName(fromItem.itemId),
                 quality: fromItem.quality,
                 buyPrice: buyPrice,
                 sellPrice: sellPrice,
+                itemProfit: itemProfit,
+                itemProfitPercent: itemProfitPercent,
                 buyDate: this.formatDate(fromItem.sellPriceMinDate),
                 sellDate: this.formatDate(toItem.sellPriceMinDate),
                 fromLocation: fromItem.location,
@@ -258,8 +264,8 @@ class DataService {
         this.filteredData = [...this.data];
 
         this.filteredData = this.filteredData.filter(item => {
-            return item.profit >= minProfit &&
-                item.profitPercent >= minProfitPercent &&
+            return item.itemProfit >= minProfit &&
+                item.itemProfitPercent >= minProfitPercent &&
                 item.soldPerDay >= minSoldPerDay;
         });
 
@@ -379,48 +385,47 @@ class UIService {
 
         this.currentSortField = 'soldPerDay';
         this.sortAscending = false;
-        
-        // Массив выделенных itemId
+
         this.selectedItemIds = [];
-        
+
         this.loadFiltersFromStorage();
     }
 
     initEventListeners() {
         const buttons = document.querySelectorAll('.analyzer-button');
-        
+
         buttons.forEach(button => {
             gsap.set(button, { transformOrigin: "center center", willChange: "transform" });
-            
+
             button.addEventListener('mouseenter', () => {
-                gsap.to(button, { 
-                    scale: 1.05, 
+                gsap.to(button, {
+                    scale: 1.05,
                     duration: 0.1,
                     ease: "power1.out",
                     transformPerspective: 1000,
                     backfaceVisibility: "hidden"
                 });
             });
-            
+
             button.addEventListener('mouseleave', () => {
-                gsap.to(button, { 
-                    scale: 1, 
+                gsap.to(button, {
+                    scale: 1,
                     duration: 0.1,
                     ease: "power1.out"
                 });
             });
-            
+
             button.addEventListener('mousedown', () => {
-                gsap.to(button, { 
-                    scale: 0.95, 
+                gsap.to(button, {
+                    scale: 0.95,
                     duration: 0.08,
                     ease: "power1.in"
                 });
             });
-            
+
             button.addEventListener('mouseup', () => {
-                gsap.to(button, { 
-                    scale: 1.05, 
+                gsap.to(button, {
+                    scale: 1.05,
                     duration: 0.08,
                     ease: "power1.out"
                 });
@@ -430,12 +435,10 @@ class UIService {
         document.getElementById('fetch-data').addEventListener('click', () => this.fetchData());
         document.getElementById('show-items-rating').addEventListener('click', () => this.showItemsRating());
 
-        // Добавляем обработчики событий input для полей фильтров
         this.minProfitInput.addEventListener('input', () => this.applyFilters());
         this.minProfitPercentInput.addEventListener('input', () => this.applyFilters());
         this.minSoldPerDayInput.addEventListener('input', () => this.applyFilters());
-        
-        // Добавляем обработчики для выпадающих списков и полей выбора
+
         this.fromLocationSelect.addEventListener('change', () => this.saveFiltersToStorage());
         this.toLocationSelect.addEventListener('change', () => this.saveFiltersToStorage());
         this.itemsCountInput.addEventListener('input', () => this.saveFiltersToStorage());
@@ -468,16 +471,14 @@ class UIService {
 
         try {
             await this.dataService.fetchMarketData(fromLocation, toLocation, itemsCount, sortType);
-            
-            // Применяем сохраненные фильтры после загрузки данных
+
             const minProfit = parseFloat(this.minProfitInput.value) || 0;
             const minProfitPercent = parseFloat(this.minProfitPercentInput.value) || 0;
             const minSoldPerDay = parseFloat(this.minSoldPerDayInput.value) || 0;
-            
+
             this.dataService.applyFilters(minProfit, minProfitPercent, minSoldPerDay);
             this.sortTable(this.currentSortField, true);
-            
-            // Сохраняем настройки после успешной загрузки
+
             this.saveFiltersToStorage();
         } catch (error) {
             this.showLoadingError(error.message);
@@ -493,8 +494,7 @@ class UIService {
 
         this.dataService.applyFilters(minProfit, minProfitPercent, minSoldPerDay);
         this.sortTable(this.currentSortField, true);
-        
-        // Сохраняем фильтры в localStorage
+
         this.saveFiltersToStorage();
     }
 
@@ -505,8 +505,7 @@ class UIService {
 
         this.dataService.resetFilters();
         this.sortTable(this.currentSortField, true);
-        
-        // Очищаем сохраненные фильтры
+
         this.clearFiltersStorage();
     }
 
@@ -523,8 +522,7 @@ class UIService {
         this.dataService.sortData(field, this.sortAscending);
         this.updateTable();
         this.updateSortIndicators();
-        
-        // Сохраняем настройки сортировки
+
         this.saveFiltersToStorage();
     }
 
@@ -545,7 +543,7 @@ class UIService {
             const row = this.createTableRow(item);
             tbody.appendChild(row);
             gsap.set(row, { opacity: 0, y: 10 });
-            
+
             gsap.to(row, {
                 opacity: 1,
                 y: 0,
@@ -554,7 +552,7 @@ class UIService {
                 ease: "power1.out"
             });
         });
-        
+
         gsap.to(tbody, { opacity: 1, duration: 0.3 });
     }
 
@@ -572,8 +570,7 @@ class UIService {
     createTableRow(item) {
         const row = document.createElement('tr');
         row.dataset.itemId = item.itemId;
-        
-        // Проверяем, есть ли этот предмет в списке выделенных
+
         if (this.selectedItemIds.includes(item.itemId)) {
             row.classList.add('copied-item');
         }
@@ -586,21 +583,22 @@ class UIService {
 
         row.appendChild(this.createTextCell(item.buyPrice.toLocaleString()));
         row.appendChild(this.createTextCell(item.sellPrice.toLocaleString()));
+
         row.appendChild(this.createTextCell(item.buyDate));
         row.appendChild(this.createTextCell(item.sellDate));
 
         row.appendChild(this.createTextCell(item.fromLocation));
         row.appendChild(this.createTextCell(item.toLocation));
 
-        const profitCell = document.createElement('td');
-        profitCell.textContent = item.profit.toLocaleString();
-        profitCell.className = item.profit > 0 ? 'profit-positive' : 'profit-negative';
-        row.appendChild(profitCell);
+        const itemProfitCell = document.createElement('td');
+        itemProfitCell.textContent = item.itemProfit.toLocaleString();
+        itemProfitCell.className = item.itemProfit > 0 ? 'profit-positive' : 'profit-negative';
+        row.appendChild(itemProfitCell);
 
-        const profitPercentCell = document.createElement('td');
-        profitPercentCell.textContent = item.profitPercent.toFixed(2) + '%';
-        profitPercentCell.className = item.profitPercent > 0 ? 'profit-positive' : 'profit-negative';
-        row.appendChild(profitPercentCell);
+        const itemProfitPercentCell = document.createElement('td');
+        itemProfitPercentCell.textContent = item.itemProfitPercent.toFixed(2) + '%';
+        itemProfitPercentCell.className = item.itemProfitPercent > 0 ? 'profit-positive' : 'profit-negative';
+        row.appendChild(itemProfitPercentCell);
 
         row.appendChild(this.createTextCell(item.soldPerDay.toFixed(2)));
 
@@ -627,52 +625,46 @@ class UIService {
         itemIcon.style.flexShrink = '0';
         itemIcon.style.cursor = 'pointer';
         itemIcon.alt = item.itemName;
-        
-        gsap.set(itemIcon, { 
-            transformOrigin: "center center", 
+
+        gsap.set(itemIcon, {
+            transformOrigin: "center center",
             willChange: "transform",
             transformPerspective: 1000,
-            backfaceVisibility: "hidden" 
+            backfaceVisibility: "hidden"
         });
-        
+
         itemIcon.addEventListener('mouseenter', () => {
-            gsap.to(itemIcon, { 
-                scale: 1.1, 
-                duration: 0.2, 
-                ease: "power1.out" 
+            gsap.to(itemIcon, {
+                scale: 1.1,
+                duration: 0.2,
+                ease: "power1.out"
             });
         });
-        
+
         itemIcon.addEventListener('mouseleave', () => {
-            gsap.to(itemIcon, { 
-                scale: 1, 
-                duration: 0.2, 
-                ease: "power1.out" 
+            gsap.to(itemIcon, {
+                scale: 1,
+                duration: 0.2,
+                ease: "power1.out"
             });
         });
 
         itemIcon.addEventListener('click', () => {
-            // Найти родительскую строку
             const row = cell.closest('tr');
-            
-            // Добавляем или удаляем itemId из списка выделенных
+
             const itemIndex = this.selectedItemIds.indexOf(item.itemId);
             if (itemIndex === -1) {
-                // Добавляем ID в массив выделенных
                 this.selectedItemIds.push(item.itemId);
-                // Добавляем класс выделения к текущей строке
                 row.classList.add('copied-item');
             } else {
-                // Удаляем ID из массива выделенных
                 this.selectedItemIds.splice(itemIndex, 1);
-                // Удаляем класс выделения
                 row.classList.remove('copied-item');
             }
-            
+
             navigator.clipboard.writeText(item.itemName)
                 .then(() => {
                     this.iconService.showCopyTooltip(itemIcon, "Скопировано!");
-                    
+
                     gsap.to(itemIcon, {
                         scale: 1.1,
                         duration: 0.2,
@@ -722,9 +714,11 @@ class UIService {
             gsap.to(this.loadingElement, { display: 'block', opacity: 1, duration: 0.3 });
             gsap.to(document.getElementById('analyzer-table-container'), { display: 'none', opacity: 0, duration: 0.3 });
         } else {
-            gsap.to(this.loadingElement, { opacity: 0, duration: 0.3, onComplete: () => {
-                this.loadingElement.style.display = 'none';
-            }});
+            gsap.to(this.loadingElement, {
+                opacity: 0, duration: 0.3, onComplete: () => {
+                    this.loadingElement.style.display = 'none';
+                }
+            });
             gsap.to(document.getElementById('analyzer-table-container'), { display: 'block', opacity: 1, duration: 0.3 });
         }
     }
@@ -743,21 +737,21 @@ class UIService {
 
     openItemsRatingModal() {
         this.itemsRatingModal.style.display = 'block';
-        
+
         const modalContent = this.itemsRatingModal.querySelector('.modal-content');
-        gsap.fromTo(modalContent, 
-            { opacity: 0, y: -20 }, 
+        gsap.fromTo(modalContent,
+            { opacity: 0, y: -20 },
             { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }
         );
     }
 
     closeItemsRatingModal() {
         const modalContent = this.itemsRatingModal.querySelector('.modal-content');
-        
-        gsap.to(modalContent, { 
-            opacity: 0, 
-            y: 20, 
-            duration: 0.3, 
+
+        gsap.to(modalContent, {
+            opacity: 0,
+            y: 20,
+            duration: 0.3,
             ease: "power2.in",
             onComplete: () => {
                 this.itemsRatingModal.style.display = 'none';
@@ -774,7 +768,7 @@ class UIService {
 
         const scores = sortedItems.map(item => item.score);
         scores.sort((a, b) => a - b);
-        
+
         const quartiles = {
             q3: scores[Math.floor(scores.length * 0.75)],
             q2: scores[Math.floor(scores.length * 0.5)],
@@ -784,9 +778,9 @@ class UIService {
         sortedItems.forEach((item, index) => {
             const listItem = this.createRatingListItem(item, index, quartiles);
             bestItemsList.appendChild(listItem);
-            
-            gsap.fromTo(listItem, 
-                { opacity: 0, x: -10 }, 
+
+            gsap.fromTo(listItem,
+                { opacity: 0, x: -10 },
                 { opacity: 1, x: 0, duration: 0.3, delay: index * 0.02 }
             );
         });
@@ -822,7 +816,7 @@ class UIService {
         const scoreText = listItem.querySelector('.item-score').textContent;
         const soldPerDayText = scoreText.split('/')[1].trim();
         const soldPerDay = parseFloat(soldPerDayText);
-        
+
         if (soldPerDay === 0) {
             listItem.style.borderLeft = '4px solid #FF0000';
         } else if (soldPerDay >= 1000) {
@@ -846,19 +840,18 @@ class UIService {
 
             if (rows.length > dataIndex) {
                 const targetRow = rows[dataIndex];
-                
-                // Используем только временную анимацию без добавления постоянного класса
-                gsap.fromTo(targetRow, 
-                    { backgroundColor: 'rgba(255, 200, 0, 0.9)' }, 
-                    { 
-                        backgroundColor: 'rgba(255, 200, 0, 0)', 
-                        duration: 10, 
+
+                gsap.fromTo(targetRow,
+                    { backgroundColor: 'rgba(255, 200, 0, 0.9)' },
+                    {
+                        backgroundColor: 'rgba(255, 200, 0, 0)',
+                        duration: 10,
                         ease: "power1.out"
                     }
                 );
 
                 this.closeItemsRatingModal();
-                
+
                 setTimeout(() => {
                     targetRow.scrollIntoView({
                         behavior: 'smooth',
@@ -876,13 +869,15 @@ class UIService {
         items.forEach(item => {
             const itemName = item.querySelector('.item-name').textContent.toLowerCase();
             const matches = itemName.includes(searchText);
-            
+
             if (matches) {
                 gsap.to(item, { display: 'flex', opacity: 1, height: 'auto', duration: 0.3 });
             } else {
-                gsap.to(item, { opacity: 0, height: 0, duration: 0.3, onComplete: () => {
-                    item.style.display = 'none';
-                }});
+                gsap.to(item, {
+                    opacity: 0, height: 0, duration: 0.3, onComplete: () => {
+                        item.style.display = 'none';
+                    }
+                });
             }
         });
     }
@@ -899,17 +894,17 @@ class UIService {
             currentSortField: this.currentSortField,
             sortAscending: this.sortAscending
         };
-        
+
         localStorage.setItem('albionFilters', JSON.stringify(filters));
     }
 
     loadFiltersFromStorage() {
         const savedFilters = localStorage.getItem('albionFilters');
-        
+
         if (savedFilters) {
             try {
                 const filters = JSON.parse(savedFilters);
-                
+
                 if (filters.fromLocation) this.fromLocationSelect.value = filters.fromLocation;
                 if (filters.toLocation) this.toLocationSelect.value = filters.toLocation;
                 if (filters.itemsCount) this.itemsCountInput.value = filters.itemsCount;
@@ -933,7 +928,7 @@ class UIService {
         this.showLoading(false);
         const tbody = this.table.querySelector('tbody');
         tbody.innerHTML = '';
-        
+
         const row = document.createElement('tr');
         const cell = document.createElement('td');
         cell.colSpan = 11;
@@ -957,51 +952,49 @@ class App {
         try {
             await this.dataService.loadItemsData();
             this.uiService.initEventListeners();
-            
+
             this.uiService.updateSortIndicators();
-            
-            // Показываем экран загрузки сразу
+
             this.uiService.showLoading(true);
-            
+
             this.initPageAnimations();
-            
-            // После инициализации приложения автоматически загружаем данные
+
             setTimeout(() => {
                 this.uiService.fetchData();
-            }, 1000); // Добавляем небольшую задержку, чтобы анимации успели запуститься
+            }, 1000);
         } catch (error) {
             console.error('Ошибка инициализации приложения:', error);
             alert('Не удалось инициализировать приложение. Пожалуйста, перезагрузите страницу.');
         }
     }
-    
+
     initPageAnimations() {
         gsap.from('h1', { opacity: 0, y: -20, duration: 0.8, ease: "power2.out" });
-        
-        gsap.from('#locations-filter', { 
-            opacity: 0, 
-            y: -10, 
-            duration: 0.5, 
-            delay: 0.2, 
-            ease: "power1.out" 
+
+        gsap.from('#locations-filter', {
+            opacity: 0,
+            y: -10,
+            duration: 0.5,
+            delay: 0.2,
+            ease: "power1.out"
         });
-        
-        gsap.from('#analyzer-filters', { 
-            opacity: 0, 
-            y: -10, 
-            duration: 0.5, 
-            delay: 0.3, 
-            ease: "power1.out" 
+
+        gsap.from('#analyzer-filters', {
+            opacity: 0,
+            y: -10,
+            duration: 0.5,
+            delay: 0.3,
+            ease: "power1.out"
         });
-        
-        gsap.from('#analyzer-table-container', { 
-            opacity: 0, 
-            scale: 0.95, 
-            duration: 0.6, 
-            delay: 0.4, 
-            ease: "power2.out" 
+
+        gsap.from('#analyzer-table-container', {
+            opacity: 0,
+            scale: 0.95,
+            duration: 0.6,
+            delay: 0.4,
+            ease: "power2.out"
         });
-        
+
         document.querySelectorAll('button, select, input').forEach(element => {
             element.classList.add('animated-transition');
         });
