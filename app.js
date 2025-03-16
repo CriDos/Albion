@@ -378,8 +378,28 @@ class DataService {
         return [...itemsWithScore].sort((a, b) => b.score - a.score);
     }
 
-    async getPriceHistory(itemId, quality, location) {
-        const url = `https://europe.albion-online-data.com/api/v2/stats/history/${itemId}?locations=${encodeURIComponent(location)}&qualities=${quality}`;
+    async getPriceHistory(itemId, location) {
+        // Запрашиваем историю цен для всех квант без фильтрации
+        const url = `https://europe.albion-online-data.com/api/v2/stats/history/${itemId}?locations=${encodeURIComponent(location)}`;
+        
+        try {
+            const response = await fetch(url);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ошибка: ${response.status}`);
+            }
+            
+            // Теперь возвращаем все данные без фильтрации по качеству
+            return await response.json();
+        } catch (error) {
+            console.error('Ошибка при получении истории цен:', error);
+            throw error;
+        }
+    }
+    
+    async getCurrentPrices(itemId, location) {
+        // Запрашиваем текущие цены для всех квант
+        const url = `https://europe.albion-online-data.com/api/v2/stats/prices/${itemId}?locations=${encodeURIComponent(location)}`;
         
         try {
             const response = await fetch(url);
@@ -389,9 +409,14 @@ class DataService {
             }
             
             const data = await response.json();
-            return data;
+            
+            // Фильтруем только по указанной локации
+            return data.filter(item => 
+                item.city.toLowerCase() === location.toLowerCase() || 
+                (location === 'Black Market' && item.city === 'Black Market')
+            );
         } catch (error) {
-            console.error('Ошибка при получении истории цен:', error);
+            console.error('Ошибка при получении текущих цен:', error);
             throw error;
         }
     }
@@ -432,6 +457,33 @@ class DataService {
             avgPrice,
             totalSales: totalCount
         };
+    }
+
+    calculateTotalSales(historyData) {
+        if (!historyData || historyData.length === 0) {
+            return { total: 0, last24h: 0 };
+        }
+        
+        const now = new Date();
+        const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        
+        let totalSales = 0;
+        let last24hSales = 0;
+        
+        historyData.forEach(qualityData => {
+            if (qualityData.data && qualityData.data.length) {
+                qualityData.data.forEach(point => {
+                    totalSales += point.item_count;
+                    
+                    const pointDate = new Date(point.timestamp);
+                    if (pointDate >= oneDayAgo) {
+                        last24hSales += point.item_count;
+                    }
+                });
+            }
+        });
+        
+        return { total: totalSales, last24h: last24hSales };
     }
 }
 
@@ -1105,7 +1157,7 @@ class UIService {
     }
 
     async showPriceHistory(item) {
-        document.getElementById('price-history-item-name').textContent = `${item.itemName} (${this.dataService.getQualityName(item.quality)})`;
+        document.getElementById('price-history-item-name').textContent = `${item.itemName}`;
         
         // Загружаем иконку предмета
         const itemIconElement = document.getElementById('price-history-item-icon');
@@ -1118,50 +1170,228 @@ class UIService {
         this.openPriceHistoryModal();
         
         try {
-            // Показываем загрузку
-            const canvas = document.getElementById('price-history-chart');
-            canvas.style.opacity = '0.5';
-            document.getElementById('price-min').textContent = 'Загрузка...';
-            document.getElementById('price-max').textContent = 'Загрузка...';
-            document.getElementById('price-avg').textContent = 'Загрузка...';
-            document.getElementById('total-sales').textContent = 'Загрузка...';
+            // Очищаем таблицу с данными
+            const priceTable = document.getElementById('current-prices-table');
+            priceTable.innerHTML = `
+                <tr>
+                    <th>Качество</th>
+                    <th>Средняя цена</th>
+                    <th>Мин. цена</th>
+                    <th>Макс. цена</th>
+                    <th>Обновлено</th>
+                    <th>Всего продаж</th>
+                    <th>Продажи за 24ч</th>
+                </tr>
+                <tr>
+                    <td colspan="7" style="text-align: center;">Загрузка данных...</td>
+                </tr>
+            `;
             
-            // Используем выбранную локацию вместо локации назначения
+            // Используем выбранную локацию
             const selectedLocation = this.historyLocationSelect.value;
             
-            // Получаем данные
-            const historyData = await this.dataService.getPriceHistory(item.itemId, item.quality, selectedLocation);
+            // Получаем данные истории цен для всех квант
+            const historyData = await this.dataService.getPriceHistory(item.itemId, selectedLocation);
             
-            // Отображаем график (статистика обновляется внутри этого метода)
-            this.renderPriceHistoryChart(historyData);
+            // Сохраняем данные истории для использования в таблице
+            this.historyData = historyData;
             
-            canvas.style.opacity = '1';
+            // Получаем текущие цены
+            const currentPrices = await this.dataService.getCurrentPrices(item.itemId, selectedLocation);
+            
+            // Подсчитываем общее количество продаж (но не отображаем в заголовке)
+            const salesStats = this.dataService.calculateTotalSales(historyData);
+            
+            // Отображаем объединенную таблицу с ценами
+            this.renderOptimizedPriceTable(historyData, currentPrices, this.showLastDayOnlyCheckbox.checked);
+            
         } catch (error) {
-            console.error('Ошибка при загрузке истории цен:', error);
-            document.getElementById('price-history-chart').innerHTML = `
-                <div style="text-align: center; color: red; padding: 20px;">
-                    Ошибка при загрузке данных: ${error.message}
-                </div>
+            console.error('Ошибка при загрузке данных:', error);
+            
+            // Отображаем ошибку в таблице
+            const priceTable = document.getElementById('current-prices-table');
+            priceTable.innerHTML = `
+                <tr>
+                    <th>Качество</th>
+                    <th>Средняя цена</th>
+                    <th>Мин. цена</th>
+                    <th>Макс. цена</th>
+                    <th>Обновлено</th>
+                    <th>Всего продаж</th>
+                    <th>Продажи за 24ч</th>
+                </tr>
+                <tr>
+                    <td colspan="7" style="text-align: center; color: red;">Ошибка при загрузке данных</td>
+                </tr>
             `;
+            
+            // Очищаем данные истории при ошибке
+            this.historyData = null;
         }
+    }
+
+    // Новый метод для отображения объединенной таблицы с ценами
+    renderOptimizedPriceTable(historyData, currentPrices, showLastDayOnly) {
+        const table = document.getElementById('current-prices-table');
+        
+        if (!historyData || historyData.length === 0 || !currentPrices || currentPrices.length === 0) {
+            table.innerHTML = `
+                <tr>
+                    <th>Качество</th>
+                    <th>Средняя цена</th>
+                    <th>Мин. цена</th>
+                    <th>Макс. цена</th>
+                    <th>Обновлено</th>
+                    <th>Всего продаж</th>
+                    <th>Продажи за 24ч</th>
+                </tr>
+                <tr>
+                    <td colspan="7" style="text-align: center;">Нет данных о ценах</td>
+                </tr>
+            `;
+            return;
+        }
+        
+        // Очищаем таблицу и добавляем заголовки
+        table.innerHTML = `
+            <tr>
+                <th>Качество</th>
+                <th>Средняя цена</th>
+                <th>Мин. цена</th>
+                <th>Макс. цена</th>
+                <th>Обновлено</th>
+                <th>Всего продаж</th>
+                <th>Продажи за 24ч</th>
+            </tr>
+        `;
+        
+        // Подготавливаем данные истории продаж
+        const now = new Date();
+        const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        
+        // Создаем сводную информацию по каждому качеству
+        const qualityData = new Map();
+        
+        // Сортируем данные по качеству
+        currentPrices.sort((a, b) => a.quality - b.quality);
+        
+        // Собираем данные о продажах для каждого качества
+        historyData.forEach(qualityHistoryData => {
+            const quality = qualityHistoryData.quality;
+            
+            // Фильтруем данные по времени
+            const filteredData = qualityHistoryData.data.filter(point => {
+                const pointDate = new Date(point.timestamp);
+                return !showLastDayOnly || pointDate >= oneDayAgo;
+            });
+            
+            if (filteredData.length === 0) return;
+            
+            // Рассчитываем средние цены
+            let totalPrice = 0;
+            let totalCount = 0;
+            let minPrice = Number.MAX_SAFE_INTEGER;
+            let maxPrice = 0;
+            let last24hCount = 0;
+            
+            filteredData.forEach(point => {
+                if (point.avg_price > 0) {
+                    totalPrice += point.avg_price * point.item_count;
+                    totalCount += point.item_count;
+                    
+                    minPrice = Math.min(minPrice, point.avg_price);
+                    maxPrice = Math.max(maxPrice, point.avg_price);
+                    
+                    // Считаем продажи за последние 24 часа
+                    const pointDate = new Date(point.timestamp);
+                    if (pointDate >= oneDayAgo) {
+                        last24hCount += point.item_count;
+                    }
+                }
+            });
+            
+            const avgPrice = totalCount > 0 ? Math.round(totalPrice / totalCount) : 0;
+            
+            qualityData.set(quality, {
+                avgPrice,
+                minPrice: minPrice === Number.MAX_SAFE_INTEGER ? 0 : minPrice,
+                maxPrice,
+                totalSales: totalCount,
+                last24hSales: last24hCount
+            });
+        });
+        
+        // Заполняем таблицу данными
+        currentPrices.forEach(item => {
+            const row = document.createElement('tr');
+            
+            // Получаем расчетные данные для текущего качества
+            const calculatedData = qualityData.get(item.quality) || {
+                avgPrice: 0,
+                minPrice: 0,
+                maxPrice: 0,
+                totalSales: 0,
+                last24hSales: 0
+            };
+            
+            // Качество
+            const qualityCell = document.createElement('td');
+            qualityCell.textContent = this.dataService.getQualityName(item.quality);
+            row.appendChild(qualityCell);
+            
+            // Средняя цена
+            const avgPriceCell = document.createElement('td');
+            avgPriceCell.textContent = calculatedData.avgPrice > 0 ? calculatedData.avgPrice.toLocaleString() : '—';
+            row.appendChild(avgPriceCell);
+            
+            // Минимальная цена продажи
+            const sellPriceMinCell = document.createElement('td');
+            sellPriceMinCell.textContent = item.sell_price_min > 0 ? item.sell_price_min.toLocaleString() : '—';
+            row.appendChild(sellPriceMinCell);
+            
+            // Максимальная цена продажи
+            const sellPriceMaxCell = document.createElement('td');
+            sellPriceMaxCell.textContent = item.sell_price_max > 0 ? item.sell_price_max.toLocaleString() : '—';
+            row.appendChild(sellPriceMaxCell);
+            
+            // Дата обновления
+            const updateDateCell = document.createElement('td');
+            updateDateCell.textContent = this.formatPriceDate(item.sell_price_min_date);
+            row.appendChild(updateDateCell);
+            
+            // Всего продаж
+            const totalSalesCell = document.createElement('td');
+            totalSalesCell.textContent = calculatedData.totalSales.toLocaleString();
+            row.appendChild(totalSalesCell);
+            
+            // Продажи за последние 24 часа
+            const recentSalesCell = document.createElement('td');
+            recentSalesCell.textContent = calculatedData.last24hSales.toLocaleString();
+            row.appendChild(recentSalesCell);
+            
+            table.appendChild(row);
+        });
+    }
+    
+    formatPriceDate(dateString) {
+        const date = new Date(dateString);
+        
+        if (date.getFullYear() <= 1970) {
+            return 'Нет данных';
+        }
+        
+        // Форматируем дату
+        return this.dataService.formatDate(dateString);
     }
 
     openPriceHistoryModal() {
         this.priceHistoryModal.style.display = 'block';
-
-        // Изменяем размер canvas перед отображением
-        const canvas = document.getElementById('price-history-chart');
-        canvas.style.height = '300px'; // Уменьшаем высоту графика
 
         const modalContent = this.priceHistoryModal.querySelector('.modal-content');
         gsap.fromTo(modalContent,
             { opacity: 0, y: -20 },
             { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }
         );
-
-        // Оптимизируем отображение статистики
-        const statsContainer = document.getElementById('price-history-stats');
-        statsContainer.style.marginTop = '10px';
     }
 
     closePriceHistoryModal() {
@@ -1177,213 +1407,6 @@ class UIService {
                 
                 // Очищаем ссылку на текущий предмет
                 this.currentHistoryItem = null;
-                
-                // Уничтожаем старый график, если он существует
-                if (this.priceHistoryChart) {
-                    this.priceHistoryChart.destroy();
-                    this.priceHistoryChart = null;
-                }
-            }
-        });
-    }
-
-    renderPriceHistoryChart(historyData) {
-        if (!historyData || !historyData[0] || !historyData[0].data || historyData[0].data.length === 0) {
-            return;
-        }
-        
-        // Уничтожаем старый график, если он существует
-        if (this.priceHistoryChart) {
-            this.priceHistoryChart.destroy();
-        }
-        
-        const ctx = document.getElementById('price-history-chart').getContext('2d');
-        
-        // Сортируем данные по времени
-        const sortedData = [...historyData[0].data].sort((a, b) => 
-            new Date(a.timestamp) - new Date(b.timestamp)
-        );
-        
-        // Определяем, нужно ли отображать только данные за последний день
-        const showLastDayOnly = this.showLastDayOnlyCheckbox.checked;
-        let filteredData = sortedData;
-        
-        // Если выбран режим отображения только последних 24 часов
-        if (showLastDayOnly) {
-            const now = new Date();
-            const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-            
-            filteredData = sortedData.filter(item => {
-                const itemDate = new Date(item.timestamp);
-                return itemDate >= oneDayAgo;
-            });
-            
-            // Если нет данных за последний день, показываем сообщение
-            if (filteredData.length === 0) {
-                document.getElementById('price-history-chart').innerHTML = `
-                    <div style="text-align: center; padding: 20px;">
-                        Нет данных о ценах за последние 24 часа
-                    </div>
-                `;
-                
-                // Обновляем статистику
-                document.getElementById('price-min').textContent = '—';
-                document.getElementById('price-max').textContent = '—';
-                document.getElementById('price-avg').textContent = '—';
-                document.getElementById('total-sales').textContent = '0';
-                
-                return;
-            }
-        } else {
-            // Для всех данных проверяем, что есть хоть что-то
-            if (filteredData.length === 0) {
-                document.getElementById('price-history-chart').innerHTML = `
-                    <div style="text-align: center; padding: 20px;">
-                        Нет данных о ценах
-                    </div>
-                `;
-                
-                // Обновляем статистику
-                document.getElementById('price-min').textContent = '—';
-                document.getElementById('price-max').textContent = '—';
-                document.getElementById('price-avg').textContent = '—';
-                document.getElementById('total-sales').textContent = '0';
-                
-                return;
-            }
-        }
-        
-        // Формируем данные для графика
-        const timestamps = filteredData.map(item => {
-            const date = new Date(item.timestamp);
-            return `${date.getMonth() + 1}.${date.getDate()} ${date.getHours()}:00`;
-        });
-        
-        const prices = filteredData.map(item => item.avg_price);
-        const volumes = filteredData.map(item => item.item_count);
-        
-        // Создаем график
-        this.priceHistoryChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: timestamps,
-                datasets: [
-                    {
-                        label: 'Цена',
-                        data: prices,
-                        borderColor: 'rgba(75, 192, 192, 1)',
-                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                        borderWidth: 2,
-                        yAxisID: 'y',
-                        tension: 0.1,
-                        pointRadius: 3
-                    },
-                    {
-                        label: 'Объем продаж',
-                        data: volumes,
-                        borderColor: 'rgba(153, 102, 255, 1)',
-                        backgroundColor: 'rgba(153, 102, 255, 0.2)',
-                        borderWidth: 1,
-                        yAxisID: 'y1',
-                        type: 'bar'
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                aspectRatio: 2,
-                interaction: {
-                    mode: 'index',
-                    intersect: false,
-                },
-                plugins: {
-                    title: {
-                        display: true,
-                        text: showLastDayOnly ? 'История цен за последние 24 часа' : 'История цен (все данные)',
-                        color: '#333',
-                        font: {
-                            size: 14
-                        }
-                    }
-                },
-                scales: {
-                    x: {
-                        ticks: {
-                            maxRotation: 45,
-                            minRotation: 45
-                        }
-                    },
-                    y: {
-                        type: 'linear',
-                        display: true,
-                        position: 'left',
-                        title: {
-                            display: true,
-                            text: 'Цена'
-                        }
-                    },
-                    y1: {
-                        type: 'linear',
-                        display: true,
-                        position: 'right',
-                        title: {
-                            display: true,
-                            text: 'Объем продаж'
-                        },
-                        grid: {
-                            drawOnChartArea: false
-                        }
-                    }
-                }
-            }
-        });
-        
-        // Обновляем статистику в зависимости от выбранного режима
-        this.updateStats(filteredData);
-    }
-    
-    updateStats(data) {
-        // Расчет статистики
-        let totalCount = 0;
-        let totalValue = 0;
-        let minPrice = Number.MAX_VALUE;
-        let maxPrice = 0;
-        
-        data.forEach(item => {
-            if (item.avg_price < minPrice && item.avg_price > 0) {
-                minPrice = item.avg_price;
-            }
-            
-            if (item.avg_price > maxPrice) {
-                maxPrice = item.avg_price;
-            }
-            
-            totalCount += item.item_count;
-            totalValue += item.avg_price * item.item_count;
-        });
-        
-        const avgPrice = totalCount > 0 ? Math.floor(totalValue / totalCount) : 0;
-        
-        // Обновляем отображение статистики
-        document.getElementById('price-min').textContent = minPrice === Number.MAX_VALUE ? '—' : minPrice.toLocaleString();
-        document.getElementById('price-max').textContent = maxPrice > 0 ? maxPrice.toLocaleString() : '—';
-        document.getElementById('price-avg').textContent = avgPrice > 0 ? avgPrice.toLocaleString() : '—';
-        document.getElementById('total-sales').textContent = totalCount.toLocaleString();
-        
-        // Обновляем заголовки в зависимости от выбранного режима
-        const period = this.showLastDayOnlyCheckbox.checked ? '(24ч)' : '(все)';
-        
-        document.querySelectorAll('#price-history-stats div > div > div:first-child').forEach(header => {
-            // Обновляем только часть с периодом
-            if (header.textContent.includes('Минимальная цена')) {
-                header.textContent = `Минимальная цена ${period}:`;
-            } else if (header.textContent.includes('Максимальная цена')) {
-                header.textContent = `Максимальная цена ${period}:`;
-            } else if (header.textContent.includes('Средняя цена')) {
-                header.textContent = `Средняя цена ${period}:`;
-            } else if (header.textContent.includes('Продаж')) {
-                header.textContent = this.showLastDayOnlyCheckbox.checked ? 'Продаж за 24ч:' : 'Всего продаж:';
             }
         });
     }
