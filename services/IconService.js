@@ -1,3 +1,5 @@
+import { ICON_CONFIG } from '../constants.js';
+
 export class IconService {
     constructor() {
         this.iconCache = {};
@@ -8,15 +10,15 @@ export class IconService {
     }
 
     initIconsDatabase() {
-        const request = indexedDB.open('AlbionIconsCache', 1);
+        const request = indexedDB.open(ICON_CONFIG.DB_NAME, ICON_CONFIG.DB_VERSION);
 
         request.onerror = (event) => { };
 
         request.onupgradeneeded = (event) => {
             const db = event.target.result;
 
-            if (!db.objectStoreNames.contains('icons')) {
-                db.createObjectStore('icons', { keyPath: 'url' });
+            if (!db.objectStoreNames.contains(ICON_CONFIG.STORE_NAME)) {
+                db.createObjectStore(ICON_CONFIG.STORE_NAME, { keyPath: 'url' });
             }
         };
 
@@ -42,13 +44,13 @@ export class IconService {
         gsap.fromTo(this.tooltip,
             { opacity: 0, y: 10 },
             {
-                opacity: 1, y: 0, duration: 0.3,
+                opacity: 1, y: 0, duration: ICON_CONFIG.ANIMATION.TOOLTIP_DURATION,
                 onComplete: () => {
                     gsap.to(this.tooltip, {
                         opacity: 0,
                         y: -10,
-                        delay: 1,
-                        duration: 0.3
+                        delay: ICON_CONFIG.ANIMATION.TOOLTIP_DELAY,
+                        duration: ICON_CONFIG.ANIMATION.TOOLTIP_DURATION
                     });
                 }
             }
@@ -56,7 +58,7 @@ export class IconService {
     }
 
     getItemIconUrl(itemId) {
-        return `https://albion-profit-calculator.com/images/items/${itemId}.png`;
+        return `${ICON_CONFIG.ICON_BASE_URL}/${itemId}.png`;
     }
 
     async getIconFromCache(url) {
@@ -67,8 +69,8 @@ export class IconService {
             }
 
             try {
-                const transaction = this.db.transaction(['icons'], 'readonly');
-                const store = transaction.objectStore('icons');
+                const transaction = this.db.transaction([ICON_CONFIG.STORE_NAME], 'readonly');
+                const store = transaction.objectStore(ICON_CONFIG.STORE_NAME);
                 const request = store.get(url);
 
                 request.onsuccess = function (event) {
@@ -88,8 +90,8 @@ export class IconService {
         if (!this.db) return;
 
         try {
-            const transaction = this.db.transaction(['icons'], 'readwrite');
-            const store = transaction.objectStore('icons');
+            const transaction = this.db.transaction([ICON_CONFIG.STORE_NAME], 'readwrite');
+            const store = transaction.objectStore(ICON_CONFIG.STORE_NAME);
 
             const iconData = {
                 url: url,
@@ -122,7 +124,7 @@ export class IconService {
     }
 
     setupImageEvents(url, imgElement) {
-        const blankImage = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+        const blankImage = ICON_CONFIG.BLANK_IMAGE;
 
         imgElement.onerror = () => {
             imgElement.src = blankImage;

@@ -1,3 +1,5 @@
+import { UI_CONFIG, STORAGE_KEYS } from '../constants.js';
+
 export class UIService {
     constructor(iconService, dataService) {
         this.iconService = iconService;
@@ -39,8 +41,8 @@ export class UIService {
 
             button.addEventListener('mouseenter', () => {
                 gsap.to(button, {
-                    scale: 1.05,
-                    duration: 0.1,
+                    scale: UI_CONFIG.BUTTON_HOVER_SCALE,
+                    duration: UI_CONFIG.ANIMATION.BUTTON_HOVER_DURATION,
                     ease: "power1.out",
                     transformPerspective: 1000,
                     backfaceVisibility: "hidden"
@@ -50,23 +52,23 @@ export class UIService {
             button.addEventListener('mouseleave', () => {
                 gsap.to(button, {
                     scale: 1,
-                    duration: 0.1,
+                    duration: UI_CONFIG.ANIMATION.BUTTON_HOVER_DURATION,
                     ease: "power1.out"
                 });
             });
 
             button.addEventListener('mousedown', () => {
                 gsap.to(button, {
-                    scale: 0.95,
-                    duration: 0.08,
+                    scale: UI_CONFIG.BUTTON_PRESSED_SCALE,
+                    duration: UI_CONFIG.ANIMATION.BUTTON_PRESS_DURATION,
                     ease: "power1.in"
                 });
             });
 
             button.addEventListener('mouseup', () => {
                 gsap.to(button, {
-                    scale: 1.05,
-                    duration: 0.08,
+                    scale: UI_CONFIG.BUTTON_HOVER_SCALE,
+                    duration: UI_CONFIG.ANIMATION.BUTTON_PRESS_DURATION,
                     ease: "power1.out"
                 });
             });
@@ -109,19 +111,15 @@ export class UIService {
             this.filterItemRating(e.target.value);
         });
         
-        // Добавляем обработчик для выбора локации в истории цен
         this.historyLocationSelect.addEventListener('change', () => {
             this.saveHistoryLocationToStorage();
-            // Если есть текущий предмет, обновляем график
             if (this.currentHistoryItem) {
                 this.showPriceHistory(this.currentHistoryItem);
             }
         });
         
-        // Добавляем обработчик для переключателя "Только за последние 24 часа"
         this.showLastDayOnlyCheckbox.addEventListener('change', () => {
             this.saveShowLastDayOnlyToStorage();
-            // Если есть текущий предмет, обновляем график
             if (this.currentHistoryItem) {
                 this.showPriceHistory(this.currentHistoryItem);
             }
@@ -214,13 +212,16 @@ export class UIService {
             gsap.to(row, {
                 opacity: 1,
                 y: 0,
-                duration: 0.2,
-                delay: index * 0.03,
+                duration: UI_CONFIG.ANIMATION.TABLE_ROW_DURATION,
+                delay: index * UI_CONFIG.ANIMATION.TABLE_ROW_STAGGER,
                 ease: "power1.out"
             });
         });
 
-        gsap.to(tbody, { opacity: 1, duration: 0.3 });
+        gsap.to(tbody, { 
+            opacity: 1, 
+            duration: UI_CONFIG.ANIMATION.TABLE_DURATION 
+        });
     }
 
     renderEmptyTableMessage(tbody) {
@@ -295,8 +296,8 @@ export class UIService {
         
         chartButton.addEventListener('mouseenter', () => {
             gsap.to(chartButton, {
-                scale: 1.2,
-                duration: 0.2,
+                scale: UI_CONFIG.CHART_BUTTON_HOVER_SCALE,
+                duration: UI_CONFIG.ANIMATION.CHART_BUTTON_DURATION,
                 ease: "power1.out"
             });
         });
@@ -304,7 +305,7 @@ export class UIService {
         chartButton.addEventListener('mouseleave', () => {
             gsap.to(chartButton, {
                 scale: 1,
-                duration: 0.2,
+                duration: UI_CONFIG.ANIMATION.CHART_BUTTON_DURATION,
                 ease: "power1.out"
             });
         });
@@ -330,8 +331,8 @@ export class UIService {
 
         itemIcon.addEventListener('mouseenter', () => {
             gsap.to(itemIcon, {
-                scale: 1.1,
-                duration: 0.2,
+                scale: UI_CONFIG.ITEM_ICON_HOVER_SCALE,
+                duration: UI_CONFIG.ANIMATION.ITEM_ICON_DURATION,
                 ease: "power1.out"
             });
         });
@@ -339,7 +340,7 @@ export class UIService {
         itemIcon.addEventListener('mouseleave', () => {
             gsap.to(itemIcon, {
                 scale: 1,
-                duration: 0.2,
+                duration: UI_CONFIG.ANIMATION.ITEM_ICON_DURATION,
                 ease: "power1.out"
             });
         });
@@ -361,13 +362,13 @@ export class UIService {
                     this.iconService.showCopyTooltip(itemIcon, "Скопировано!");
 
                     gsap.to(itemIcon, {
-                        scale: 1.1,
-                        duration: 0.2,
+                        scale: UI_CONFIG.ITEM_ICON_HOVER_SCALE,
+                        duration: UI_CONFIG.ANIMATION.ITEM_ICON_DURATION,
                         ease: "power1.out",
                         onComplete: () => {
                             gsap.to(itemIcon, {
                                 scale: 1,
-                                duration: 0.2,
+                                duration: UI_CONFIG.ANIMATION.ITEM_ICON_DURATION,
                                 ease: "power1.in"
                             });
                         }
@@ -407,15 +408,29 @@ export class UIService {
 
     showLoading(show) {
         if (show) {
-            gsap.to(this.loadingElement, { display: 'block', opacity: 1, duration: 0.3 });
-            gsap.to(document.getElementById('analyzer-table-container'), { display: 'none', opacity: 0, duration: 0.3 });
+            gsap.to(this.loadingElement, { 
+                display: 'block', 
+                opacity: 1, 
+                duration: UI_CONFIG.ANIMATION.LOADING_DURATION 
+            });
+            gsap.to(document.getElementById('analyzer-table-container'), { 
+                display: 'none', 
+                opacity: 0, 
+                duration: UI_CONFIG.ANIMATION.LOADING_DURATION 
+            });
         } else {
             gsap.to(this.loadingElement, {
-                opacity: 0, duration: 0.3, onComplete: () => {
+                opacity: 0, 
+                duration: UI_CONFIG.ANIMATION.LOADING_DURATION, 
+                onComplete: () => {
                     this.loadingElement.style.display = 'none';
                 }
             });
-            gsap.to(document.getElementById('analyzer-table-container'), { display: 'block', opacity: 1, duration: 0.3 });
+            gsap.to(document.getElementById('analyzer-table-container'), { 
+                display: 'block', 
+                opacity: 1, 
+                duration: UI_CONFIG.ANIMATION.LOADING_DURATION 
+            });
         }
     }
 
@@ -437,7 +452,12 @@ export class UIService {
         const modalContent = this.itemsRatingModal.querySelector('.modal-content');
         gsap.fromTo(modalContent,
             { opacity: 0, y: -20 },
-            { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }
+            { 
+                opacity: 1, 
+                y: 0, 
+                duration: UI_CONFIG.ANIMATION.MODAL_DURATION, 
+                ease: "power2.out" 
+            }
         );
     }
 
@@ -447,7 +467,7 @@ export class UIService {
         gsap.to(modalContent, {
             opacity: 0,
             y: 20,
-            duration: 0.3,
+            duration: UI_CONFIG.ANIMATION.MODAL_DURATION,
             ease: "power2.in",
             onComplete: () => {
                 this.itemsRatingModal.style.display = 'none';
@@ -477,7 +497,12 @@ export class UIService {
 
             gsap.fromTo(listItem,
                 { opacity: 0, x: -10 },
-                { opacity: 1, x: 0, duration: 0.3, delay: index * 0.02 }
+                { 
+                    opacity: 1, 
+                    x: 0, 
+                    duration: UI_CONFIG.ANIMATION.RATING_ITEM_DURATION, 
+                    delay: index * UI_CONFIG.ANIMATION.RATING_ITEM_STAGGER 
+                }
             );
         });
     }
@@ -541,7 +566,7 @@ export class UIService {
                     { backgroundColor: 'rgba(255, 200, 0, 0.9)' },
                     {
                         backgroundColor: 'rgba(255, 200, 0, 0)',
-                        duration: 10,
+                        duration: UI_CONFIG.ANIMATION.ROW_HIGHLIGHT_DURATION,
                         ease: "power1.out"
                     }
                 );
@@ -553,7 +578,7 @@ export class UIService {
                         behavior: 'smooth',
                         block: 'center'
                     });
-                }, 300);
+                }, UI_CONFIG.ANIMATION.SCROLL_DELAY);
             }
         });
     }
@@ -567,10 +592,18 @@ export class UIService {
             const matches = itemName.includes(searchText);
 
             if (matches) {
-                gsap.to(item, { display: 'flex', opacity: 1, height: 'auto', duration: 0.3 });
+                gsap.to(item, { 
+                    display: 'flex', 
+                    opacity: 1, 
+                    height: 'auto', 
+                    duration: UI_CONFIG.ANIMATION.FILTER_DURATION 
+                });
             } else {
                 gsap.to(item, {
-                    opacity: 0, height: 0, duration: 0.3, onComplete: () => {
+                    opacity: 0, 
+                    height: 0, 
+                    duration: UI_CONFIG.ANIMATION.FILTER_DURATION, 
+                    onComplete: () => {
                         item.style.display = 'none';
                     }
                 });
@@ -592,11 +625,11 @@ export class UIService {
             sortAscending: this.sortAscending
         };
 
-        localStorage.setItem('albionFilters', JSON.stringify(filters));
+        localStorage.setItem(STORAGE_KEYS.FILTERS, JSON.stringify(filters));
     }
 
     loadFiltersFromStorage() {
-        const savedFilters = localStorage.getItem('albionFilters');
+        const savedFilters = localStorage.getItem(STORAGE_KEYS.FILTERS);
 
         if (savedFilters) {
             try {
@@ -623,32 +656,30 @@ export class UIService {
         }
     }
     
-    // Функция для сохранения выбранной локации в localStorage
     saveHistoryLocationToStorage() {
-        localStorage.setItem('albionHistoryLocation', this.historyLocationSelect.value);
+        localStorage.setItem(STORAGE_KEYS.HISTORY_LOCATION, this.historyLocationSelect.value);
     }
     
-    // Функция для загрузки выбранной локации из localStorage
     loadHistoryLocationFromStorage() {
-        const savedLocation = localStorage.getItem('albionHistoryLocation');
+        const savedLocation = localStorage.getItem(STORAGE_KEYS.HISTORY_LOCATION);
         if (savedLocation) {
             this.historyLocationSelect.value = savedLocation;
         }
     }
     
     saveShowLastDayOnlyToStorage() {
-        localStorage.setItem('albionShowLastDayOnly', this.showLastDayOnlyCheckbox.checked);
+        localStorage.setItem(STORAGE_KEYS.SHOW_LAST_DAY_ONLY, this.showLastDayOnlyCheckbox.checked);
     }
     
     loadShowLastDayOnlyFromStorage() {
-        const savedValue = localStorage.getItem('albionShowLastDayOnly');
+        const savedValue = localStorage.getItem(STORAGE_KEYS.SHOW_LAST_DAY_ONLY);
         if (savedValue !== null) {
             this.showLastDayOnlyCheckbox.checked = savedValue === 'true';
         }
     }
 
     clearFiltersStorage() {
-        localStorage.removeItem('albionFilters');
+        localStorage.removeItem(STORAGE_KEYS.FILTERS);
     }
 
     showLoadingError(message) {
@@ -670,18 +701,15 @@ export class UIService {
     async showPriceHistory(item) {
         document.getElementById('price-history-item-name').textContent = `${item.itemName}`;
         
-        // Загружаем иконку предмета
         const itemIconElement = document.getElementById('price-history-item-icon');
         const iconUrl = this.iconService.getItemIconUrl(item.itemId);
         this.iconService.loadItemIcon(iconUrl, itemIconElement);
         
-        // Сохраняем ссылку на текущий предмет
         this.currentHistoryItem = item;
         
         this.openPriceHistoryModal();
         
         try {
-            // Очищаем таблицу с данными
             const priceTable = document.getElementById('current-prices-table');
             priceTable.innerHTML = `
                 <tr>
@@ -698,28 +726,21 @@ export class UIService {
                 </tr>
             `;
             
-            // Используем выбранную локацию
             const selectedLocation = this.historyLocationSelect.value;
             
-            // Получаем данные истории цен для всех квант
             const historyData = await this.dataService.getPriceHistory(item.itemId, selectedLocation);
             
-            // Сохраняем данные истории для использования в таблице
             this.historyData = historyData;
             
-            // Получаем текущие цены
             const currentPrices = await this.dataService.getCurrentPrices(item.itemId, selectedLocation);
             
-            // Подсчитываем общее количество продаж (но не отображаем в заголовке)
             const salesStats = this.dataService.calculateTotalSales(historyData);
             
-            // Отображаем объединенную таблицу с ценами
             this.renderOptimizedPriceTable(historyData, currentPrices, this.showLastDayOnlyCheckbox.checked);
             
         } catch (error) {
             console.error('Ошибка при загрузке данных:', error);
             
-            // Отображаем ошибку в таблице
             const priceTable = document.getElementById('current-prices-table');
             priceTable.innerHTML = `
                 <tr>
@@ -736,12 +757,10 @@ export class UIService {
                 </tr>
             `;
             
-            // Очищаем данные истории при ошибке
             this.historyData = null;
         }
     }
 
-    // Новый метод для отображения объединенной таблицы с ценами
     renderOptimizedPriceTable(historyData, currentPrices, showLastDayOnly) {
         const table = document.getElementById('current-prices-table');
         
@@ -763,7 +782,6 @@ export class UIService {
             return;
         }
         
-        // Очищаем таблицу и добавляем заголовки
         table.innerHTML = `
             <tr>
                 <th>Качество</th>
@@ -776,21 +794,16 @@ export class UIService {
             </tr>
         `;
         
-        // Подготавливаем данные истории продаж
         const now = new Date();
-        const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        const oneDayAgo = new Date(now.getTime() - UI_CONFIG.TIME_CONSTANTS.DAY_MS);
         
-        // Создаем сводную информацию по каждому качеству
         const qualityData = new Map();
         
-        // Сортируем данные по качеству
         currentPrices.sort((a, b) => a.quality - b.quality);
         
-        // Собираем данные о продажах для каждого качества
         historyData.forEach(qualityHistoryData => {
             const quality = qualityHistoryData.quality;
             
-            // Фильтруем данные по времени
             const filteredData = qualityHistoryData.data.filter(point => {
                 const pointDate = new Date(point.timestamp);
                 return !showLastDayOnly || pointDate >= oneDayAgo;
@@ -798,7 +811,6 @@ export class UIService {
             
             if (filteredData.length === 0) return;
             
-            // Рассчитываем средние цены
             let totalPrice = 0;
             let totalCount = 0;
             let minPrice = Number.MAX_SAFE_INTEGER;
@@ -813,7 +825,6 @@ export class UIService {
                     minPrice = Math.min(minPrice, point.avg_price);
                     maxPrice = Math.max(maxPrice, point.avg_price);
                     
-                    // Считаем продажи за последние 24 часа
                     const pointDate = new Date(point.timestamp);
                     if (pointDate >= oneDayAgo) {
                         last24hCount += point.item_count;
@@ -832,11 +843,9 @@ export class UIService {
             });
         });
         
-        // Заполняем таблицу данными
         currentPrices.forEach(item => {
             const row = document.createElement('tr');
             
-            // Получаем расчетные данные для текущего качества
             const calculatedData = qualityData.get(item.quality) || {
                 avgPrice: 0,
                 minPrice: 0,
@@ -845,37 +854,30 @@ export class UIService {
                 last24hSales: 0
             };
             
-            // Качество
             const qualityCell = document.createElement('td');
             qualityCell.textContent = this.dataService.getQualityName(item.quality);
             row.appendChild(qualityCell);
             
-            // Средняя цена
             const avgPriceCell = document.createElement('td');
             avgPriceCell.textContent = calculatedData.avgPrice > 0 ? calculatedData.avgPrice.toLocaleString() : '—';
             row.appendChild(avgPriceCell);
             
-            // Минимальная цена продажи
             const sellPriceMinCell = document.createElement('td');
             sellPriceMinCell.textContent = item.sell_price_min > 0 ? item.sell_price_min.toLocaleString() : '—';
             row.appendChild(sellPriceMinCell);
             
-            // Максимальная цена продажи
             const sellPriceMaxCell = document.createElement('td');
             sellPriceMaxCell.textContent = item.sell_price_max > 0 ? item.sell_price_max.toLocaleString() : '—';
             row.appendChild(sellPriceMaxCell);
             
-            // Дата обновления
             const updateDateCell = document.createElement('td');
             updateDateCell.textContent = this.formatPriceDate(item.sell_price_min_date);
             row.appendChild(updateDateCell);
             
-            // Всего продаж
             const totalSalesCell = document.createElement('td');
             totalSalesCell.textContent = calculatedData.totalSales.toLocaleString();
             row.appendChild(totalSalesCell);
             
-            // Продажи за последние 24 часа
             const recentSalesCell = document.createElement('td');
             recentSalesCell.textContent = calculatedData.last24hSales.toLocaleString();
             row.appendChild(recentSalesCell);
@@ -891,7 +893,6 @@ export class UIService {
             return 'Нет данных';
         }
         
-        // Форматируем дату
         return this.dataService.formatDate(dateString);
     }
 
@@ -901,7 +902,12 @@ export class UIService {
         const modalContent = this.priceHistoryModal.querySelector('.modal-content');
         gsap.fromTo(modalContent,
             { opacity: 0, y: -20 },
-            { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }
+            { 
+                opacity: 1, 
+                y: 0, 
+                duration: UI_CONFIG.ANIMATION.MODAL_DURATION, 
+                ease: "power2.out" 
+            }
         );
     }
 
@@ -911,12 +917,10 @@ export class UIService {
         gsap.to(modalContent, {
             opacity: 0,
             y: 20,
-            duration: 0.3,
+            duration: UI_CONFIG.ANIMATION.MODAL_DURATION,
             ease: "power2.in",
             onComplete: () => {
                 this.priceHistoryModal.style.display = 'none';
-                
-                // Очищаем ссылку на текущий предмет
                 this.currentHistoryItem = null;
             }
         });

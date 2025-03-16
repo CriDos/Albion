@@ -1,6 +1,7 @@
 import { IconService } from './services/IconService.js';
 import { DataService } from './services/DataService.js';
 import { UIService } from './services/UIService.js';
+import { APP_CONFIG } from './constants.js';
 
 class App {
     constructor() {
@@ -22,7 +23,7 @@ class App {
 
             setTimeout(() => {
                 this.uiService.fetchData();
-            }, 1000);
+            }, APP_CONFIG.INITIAL_DATA_FETCH_DELAY);
         } catch (error) {
             console.error('Ошибка инициализации приложения:', error);
             alert('Не удалось инициализировать приложение. Пожалуйста, перезагрузите страницу.');

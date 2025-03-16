@@ -1,3 +1,5 @@
+import { API_CONFIG, TAX_RATES, QUALITY_NAMES } from '../constants.js';
+
 export class DataService {
     constructor() {
         this.itemsData = [];
@@ -41,8 +43,8 @@ export class DataService {
             item = this.itemsData.find(item => item.UniqueName === cleanUniqueName);
         }
 
-        if (item && item.LocalizedNames && item.LocalizedNames["RU-RU"]) {
-            return item.LocalizedNames["RU-RU"];
+        if (item && item.LocalizedNames && item.LocalizedNames[API_CONFIG.LOCALIZATION_KEY]) {
+            return item.LocalizedNames[API_CONFIG.LOCALIZATION_KEY];
         }
 
         return uniqueName;
@@ -53,7 +55,7 @@ export class DataService {
             throw new Error('Выберите разные локации для отправления и получения');
         }
 
-        const url = `https://albion-profit-calculator.com/api/transportations/sort?from=${encodeURIComponent(fromLocation)}&to=${encodeURIComponent(toLocation)}&count=${itemsCount}&skip=0&sort=BY_LAST_TIME_CHECKED,${sortType}&serverId=aod_europe`;
+        const url = `${API_CONFIG.MARKET_API_URL}/transportations/sort?from=${encodeURIComponent(fromLocation)}&to=${encodeURIComponent(toLocation)}&count=${itemsCount}&skip=0&sort=BY_LAST_TIME_CHECKED,${sortType}&serverId=${API_CONFIG.SERVER_ID}`;
 
         const response = await fetch(url, {
             method: 'GET',
@@ -89,12 +91,12 @@ export class DataService {
 
             // Расчет прибыли с учетом налогов
             
-            // Сбор за размещение заказов (всегда 2.5% при покупке и продаже)
-            const sellOrderFee = Math.ceil(sellPrice * 0.025);
-            const buyOrderFee = Math.ceil(buyPrice * 0.025);
+            // Сбор за размещение заказов
+            const sellOrderFee = Math.ceil(sellPrice * TAX_RATES.MARKET_FEE);
+            const buyOrderFee = Math.ceil(buyPrice * TAX_RATES.MARKET_FEE);
             
-            // Налог с продаж (8% для обычных игроков, 4% для премиум-игроков)
-            const salesTax = Math.ceil(sellPrice * (this.isPremiumTaxEnabled ? 0.04 : 0.08));
+            // Налог с продаж
+            const salesTax = Math.ceil(sellPrice * (this.isPremiumTaxEnabled ? TAX_RATES.PREMIUM_SALES_TAX : TAX_RATES.NORMAL_SALES_TAX));
             
             // Итоговая прибыль
             const itemProfit = sellPrice - sellOrderFee - salesTax - buyPrice - buyOrderFee;
@@ -163,17 +165,17 @@ export class DataService {
         const now = new Date();
         const diff = now - date;
 
-        if (diff < 86400000) {
-            const hours = Math.floor(diff / 3600000);
+        if (diff < API_CONFIG.TIME_CONSTANTS.DAY_MS) {
+            const hours = Math.floor(diff / API_CONFIG.TIME_CONSTANTS.HOUR_MS);
             if (hours < 1) {
-                const minutes = Math.floor(diff / 60000);
+                const minutes = Math.floor(diff / API_CONFIG.TIME_CONSTANTS.MINUTE_MS);
                 return `${minutes} мин. назад`;
             }
             return `${hours} ч. назад`;
         }
 
-        if (diff < 604800000) {
-            const days = Math.floor(diff / 86400000);
+        if (diff < API_CONFIG.TIME_CONSTANTS.WEEK_MS) {
+            const days = Math.floor(diff / API_CONFIG.TIME_CONSTANTS.DAY_MS);
             return `${days} дн. назад`;
         }
 
@@ -181,15 +183,7 @@ export class DataService {
     }
 
     getQualityName(quality) {
-        const qualityNames = {
-            1: 'Обычное',
-            2: 'Хорошее',
-            3: 'Выдающееся',
-            4: 'Отличное',
-            5: 'Шедевр'
-        };
-
-        return qualityNames[quality] || 'Неизвестно';
+        return QUALITY_NAMES[quality] || 'Неизвестно';
     }
 
     calculateItemRating() {
@@ -227,8 +221,7 @@ export class DataService {
     }
 
     async getPriceHistory(itemId, location) {
-        // Запрашиваем историю цен для всех квант без фильтрации
-        const url = `https://europe.albion-online-data.com/api/v2/stats/history/${itemId}?locations=${encodeURIComponent(location)}`;
+        const url = `${API_CONFIG.DATA_API_URL}/stats/history/${itemId}?locations=${encodeURIComponent(location)}`;
         
         try {
             const response = await fetch(url);
@@ -237,7 +230,6 @@ export class DataService {
                 throw new Error(`HTTP ошибка: ${response.status}`);
             }
             
-            // Теперь возвращаем все данные без фильтрации по качеству
             return await response.json();
         } catch (error) {
             console.error('Ошибка при получении истории цен:', error);
@@ -246,8 +238,7 @@ export class DataService {
     }
     
     async getCurrentPrices(itemId, location) {
-        // Запрашиваем текущие цены для всех квант
-        const url = `https://europe.albion-online-data.com/api/v2/stats/prices/${itemId}?locations=${encodeURIComponent(location)}`;
+        const url = `${API_CONFIG.DATA_API_URL}/stats/prices/${itemId}?locations=${encodeURIComponent(location)}`;
         
         try {
             const response = await fetch(url);
@@ -258,7 +249,6 @@ export class DataService {
             
             const data = await response.json();
             
-            // Фильтруем только по указанной локации
             return data.filter(item => 
                 item.city.toLowerCase() === location.toLowerCase() || 
                 (location === 'Black Market' && item.city === 'Black Market')
@@ -313,7 +303,7 @@ export class DataService {
         }
         
         const now = new Date();
-        const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        const oneDayAgo = new Date(now.getTime() - API_CONFIG.TIME_CONSTANTS.DAY_MS);
         
         let totalSales = 0;
         let last24hSales = 0;
