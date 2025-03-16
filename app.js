@@ -155,6 +155,7 @@ class DataService {
         this.itemsData = [];
         this.data = [];
         this.filteredData = [];
+        this.isPremiumTaxEnabled = false;
     }
 
     async loadItemsData() {
@@ -232,11 +233,23 @@ class DataService {
 
             const buyPrice = fromItem.sellPriceMin;
             const sellPrice = toItem.sellPriceMin;
+            
+            // Базовая разница (без учета налогов)
             const profit = sellPrice - buyPrice;
             const profitPercent = buyPrice > 0 ? (profit / buyPrice) * 100 : 0;
             const soldPerDay = toItem.averageItems || 0;
 
-            const itemProfit = sellPrice * 0.935 - buyPrice;
+            // Расчет прибыли с учетом налогов
+            
+            // Сбор за размещение заказов (всегда 2.5% при покупке и продаже)
+            const sellOrderFee = Math.ceil(sellPrice * 0.025);
+            const buyOrderFee = Math.ceil(buyPrice * 0.025);
+            
+            // Налог с продаж (8% для обычных игроков, 4% для премиум-игроков)
+            const salesTax = Math.ceil(sellPrice * (this.isPremiumTaxEnabled ? 0.04 : 0.08));
+            
+            // Итоговая прибыль
+            const itemProfit = sellPrice - sellOrderFee - salesTax - buyPrice - buyOrderFee;
             const itemProfitPercent = buyPrice > 0 ? (itemProfit / buyPrice) * 100 : 0;
 
             return {
@@ -378,6 +391,7 @@ class UIService {
         this.minProfitInput = document.getElementById('min-profit');
         this.minProfitPercentInput = document.getElementById('min-profit-percent');
         this.minSoldPerDayInput = document.getElementById('min-sold-per-day');
+        this.premiumTaxCheckbox = document.getElementById('premium-tax');
         this.table = document.getElementById('analyzer-table');
         this.loadingElement = document.getElementById('loading');
         this.tableHeaders = this.table.querySelectorAll('th');
@@ -438,6 +452,11 @@ class UIService {
         this.minProfitInput.addEventListener('input', () => this.applyFilters());
         this.minProfitPercentInput.addEventListener('input', () => this.applyFilters());
         this.minSoldPerDayInput.addEventListener('input', () => this.applyFilters());
+        this.premiumTaxCheckbox.addEventListener('change', () => {
+            this.dataService.isPremiumTaxEnabled = this.premiumTaxCheckbox.checked;
+            this.fetchData();
+            this.saveFiltersToStorage();
+        });
 
         this.fromLocationSelect.addEventListener('change', () => this.saveFiltersToStorage());
         this.toLocationSelect.addEventListener('change', () => this.saveFiltersToStorage());
@@ -891,6 +910,7 @@ class UIService {
             minProfit: this.minProfitInput.value,
             minProfitPercent: this.minProfitPercentInput.value,
             minSoldPerDay: this.minSoldPerDayInput.value,
+            premiumTaxEnabled: this.premiumTaxCheckbox.checked,
             currentSortField: this.currentSortField,
             sortAscending: this.sortAscending
         };
@@ -912,6 +932,12 @@ class UIService {
                 if (filters.minProfit) this.minProfitInput.value = filters.minProfit;
                 if (filters.minProfitPercent) this.minProfitPercentInput.value = filters.minProfitPercent;
                 if (filters.minSoldPerDay) this.minSoldPerDayInput.value = filters.minSoldPerDay;
+                
+                if (filters.premiumTaxEnabled !== undefined) {
+                    this.premiumTaxCheckbox.checked = filters.premiumTaxEnabled;
+                    this.dataService.isPremiumTaxEnabled = filters.premiumTaxEnabled;
+                }
+                
                 if (filters.currentSortField) this.currentSortField = filters.currentSortField;
                 if (filters.sortAscending !== undefined) this.sortAscending = filters.sortAscending;
             } catch (error) {
