@@ -37,7 +37,7 @@ export const QUALITY_NAMES = {
 
 // Настройки для работы с иконками
 export const ICON_CONFIG = {
-    ICON_BASE_URL: 'https://albion-profit-calculator.com/images/items', // Базовый URL для иконок
+    ICON_BASE_URL: 'https://render.albiononline.com/v1/item', // Базовый URL для иконок
     DB_NAME: 'AlbionIconsCache', // Имя базы данных IndexedDB
     DB_VERSION: 1, // Версия базы данных
     STORE_NAME: 'icons', // Имя хранилища в базе данных
