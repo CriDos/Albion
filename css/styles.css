@@ -702,4 +702,44 @@ tr.copied-item {
 #from-location-prices-table tr:hover,
 #to-location-prices-table tr:hover {
     background-color: #f1f1f1;
+}
+
+#show-favorites.active {
+    background-color: #FFD700;
+    color: #000;
+}
+
+#show-favorites.active:hover {
+    background-color: #FFC000;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    padding: 8px 16px;
+    background-color: #2c3e50;
+    border-radius: 4px;
+    transition: background-color 0.3s ease;
+}
+
+.checkbox-label:hover {
+    background-color: #34495e;
+}
+
+.checkbox-label input[type="checkbox"] {
+    margin-right: 8px;
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"]:checked + span {
+    color: #FFD700;
+}
+
+.checkbox-label span {
+    color: #ecf0f1;
+    font-size: 14px;
 } 

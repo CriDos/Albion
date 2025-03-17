@@ -103,5 +103,7 @@ export const UI_CONFIG = {
 export const STORAGE_KEYS = {
     FILTERS: 'albionFilters', // Ключ для хранения фильтров
     HISTORY_LOCATION: 'albionHistoryLocation', // Ключ для хранения выбранной локации в истории цен
-    SHOW_LAST_DAY_ONLY: 'albionShowLastDayOnly' // Ключ для хранения настройки "Показывать только за последние 24 часа"
+    SHOW_LAST_DAY_ONLY: 'albionShowLastDayOnly', // Ключ для хранения настройки "Показывать только за последние 24 часа"
+    FAVORITE_ITEMS: 'albionFavoriteItems',
+    SHOW_FAVORITES: 'albionShowFavorites'
 }; 

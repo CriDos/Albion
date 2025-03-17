@@ -13,6 +13,7 @@ export class UIService {
         this.minProfitPercentInput = document.getElementById('min-profit-percent');
         this.minSoldPerDayInput = document.getElementById('min-sold-per-day');
         this.premiumTaxCheckbox = document.getElementById('premium-tax');
+        this.showFavoritesCheckbox = document.getElementById('show-favorites');
         this.table = document.getElementById('analyzer-table');
         this.loadingElement = document.getElementById('loading');
         this.tableHeaders = this.table.querySelectorAll('th');
@@ -24,11 +25,15 @@ export class UIService {
 
         this.currentSortField = 'soldPerDay';
         this.sortAscending = false;
+        this.showFavoritesOnly = false;
+        this.favoriteItems = new Map();
 
         this.selectedItemIds = [];
 
         this.loadFiltersFromStorage();
         this.loadShowLastDayOnlyFromStorage();
+        this.loadFavoriteItemsFromStorage();
+        this.loadFavoritesCheckboxState();
     }
 
     initEventListeners() {
@@ -115,6 +120,11 @@ export class UIService {
                 this.showPriceHistory(this.currentHistoryItem);
             }
         });
+
+        this.showFavoritesCheckbox.addEventListener('change', () => {
+            this.toggleFavoritesMode();
+            this.saveFavoritesCheckboxState();
+        });
     }
 
     async fetchData() {
@@ -186,16 +196,37 @@ export class UIService {
         const tbody = this.table.querySelector('tbody');
         tbody.innerHTML = '';
 
-        const filteredData = this.dataService.filteredData;
+        let dataToShow = [];
 
-        if (filteredData.length === 0) {
-            this.renderEmptyTableMessage(tbody);
+        if (this.showFavoritesOnly) {
+            // Фильтруем только корректные записи избранного
+            dataToShow = Array.from(this.favoriteItems.values()).filter(item => this.isValidFavoriteItem(item));
+        } else {
+            dataToShow = this.dataService.filteredData || [];
+        }
+
+        if (dataToShow.length === 0) {
+            if (this.showFavoritesOnly) {
+                const row = document.createElement('tr');
+                const cell = document.createElement('td');
+                cell.colSpan = 11;
+                cell.textContent = 'Нет избранных товаров. Добавьте товары в избранное, нажав на звездочку рядом с названием товара.';
+                cell.style.textAlign = 'center';
+                cell.style.padding = '20px';
+                row.appendChild(cell);
+                tbody.appendChild(row);
+            } else {
+                this.renderEmptyTableMessage(tbody);
+            }
             return;
         }
 
+        // Сортируем данные (и обычные, и избранные) по текущему полю
+        this.sortDataArray(dataToShow);
+
         gsap.set(tbody, { opacity: 0 });
 
-        filteredData.forEach((item, index) => {
+        dataToShow.forEach((item, index) => {
             const row = this.createTableRow(item);
             tbody.appendChild(row);
             gsap.set(row, { opacity: 0, y: 10 });
@@ -237,29 +268,35 @@ export class UIService {
         row.appendChild(this.createItemCell(item));
 
         const qualityCell = document.createElement('td');
-        qualityCell.textContent = this.dataService.getQualityName(item.quality);
+        qualityCell.textContent = this.dataService.getQualityName(item.quality || 0);
         row.appendChild(qualityCell);
 
-        row.appendChild(this.createTextCell(item.buyPrice.toLocaleString()));
-        row.appendChild(this.createTextCell(item.sellPrice.toLocaleString()));
+        const buyPrice = item.buyPrice !== undefined ? item.buyPrice : 0;
+        row.appendChild(this.createTextCell(buyPrice.toLocaleString()));
+        
+        const sellPrice = item.sellPrice !== undefined ? item.sellPrice : 0;
+        row.appendChild(this.createTextCell(sellPrice.toLocaleString()));
 
-        row.appendChild(this.createTextCell(item.buyDate));
-        row.appendChild(this.createTextCell(item.sellDate));
+        row.appendChild(this.createTextCell(item.buyDate || '-'));
+        row.appendChild(this.createTextCell(item.sellDate || '-'));
 
-        row.appendChild(this.createTextCell(item.fromLocation));
-        row.appendChild(this.createTextCell(item.toLocation));
+        row.appendChild(this.createTextCell(item.fromLocation || '-'));
+        row.appendChild(this.createTextCell(item.toLocation || '-'));
 
+        const itemProfit = item.itemProfit !== undefined ? item.itemProfit : 0;
         const itemProfitCell = document.createElement('td');
-        itemProfitCell.textContent = item.itemProfit.toLocaleString();
-        itemProfitCell.className = item.itemProfit > 0 ? 'profit-positive' : 'profit-negative';
+        itemProfitCell.textContent = itemProfit.toLocaleString();
+        itemProfitCell.className = itemProfit > 0 ? 'profit-positive' : 'profit-negative';
         row.appendChild(itemProfitCell);
 
+        const itemProfitPercent = item.itemProfitPercent !== undefined ? item.itemProfitPercent : 0;
         const itemProfitPercentCell = document.createElement('td');
-        itemProfitPercentCell.textContent = item.itemProfitPercent.toFixed(2) + '%';
-        itemProfitPercentCell.className = item.itemProfitPercent > 0 ? 'profit-positive' : 'profit-negative';
+        itemProfitPercentCell.textContent = itemProfitPercent.toFixed(2) + '%';
+        itemProfitPercentCell.className = itemProfitPercent > 0 ? 'profit-positive' : 'profit-negative';
         row.appendChild(itemProfitPercentCell);
 
-        row.appendChild(this.createTextCell(item.soldPerDay.toFixed(2)));
+        const soldPerDay = item.soldPerDay !== undefined ? item.soldPerDay : 0;
+        row.appendChild(this.createTextCell(soldPerDay.toFixed(2)));
 
         return row;
     }
@@ -276,6 +313,44 @@ export class UIService {
         const itemContainer = document.createElement('div');
         itemContainer.style.display = 'flex';
         itemContainer.style.alignItems = 'center';
+
+        // Создаем кнопку избранного
+        const favoriteButton = document.createElement('span');
+        const isFavorite = this.favoriteItems.has(item.itemId);
+        favoriteButton.innerHTML = isFavorite ? '★' : '☆';
+        favoriteButton.title = isFavorite ? 'Удалить из избранного' : 'Добавить в избранное';
+        favoriteButton.style.cursor = 'pointer';
+        favoriteButton.style.marginRight = '10px';
+        favoriteButton.style.fontSize = '18px';
+        favoriteButton.style.color = isFavorite ? '#FFD700' : '#808080';
+        
+        favoriteButton.addEventListener('mouseenter', () => {
+            gsap.to(favoriteButton, {
+                scale: UI_CONFIG.CHART_BUTTON_HOVER_SCALE,
+                duration: UI_CONFIG.ANIMATION.CHART_BUTTON_DURATION,
+                ease: "power1.out"
+            });
+        });
+
+        favoriteButton.addEventListener('mouseleave', () => {
+            gsap.to(favoriteButton, {
+                scale: 1,
+                duration: UI_CONFIG.ANIMATION.CHART_BUTTON_DURATION,
+                ease: "power1.out"
+            });
+        });
+        
+        favoriteButton.addEventListener('click', () => {
+            this.toggleFavorite(item);
+            const isNowFavorite = this.favoriteItems.has(item.itemId);
+            favoriteButton.innerHTML = isNowFavorite ? '★' : '☆';
+            favoriteButton.style.color = isNowFavorite ? '#FFD700' : '#808080';
+            favoriteButton.title = isNowFavorite ? 'Удалить из избранного' : 'Добавить в избранное';
+            
+            if (this.showFavoritesOnly) {
+                this.updateTable();
+            }
+        });
 
         // Создаем кнопку графика
         const chartButton = document.createElement('span');
@@ -377,6 +452,7 @@ export class UIService {
         itemNameSpan.style.overflow = 'hidden';
         itemNameSpan.style.textOverflow = 'ellipsis';
 
+        itemContainer.appendChild(favoriteButton);
         itemContainer.appendChild(chartButton);
         itemContainer.appendChild(itemIcon);
         itemContainer.appendChild(itemNameSpan);
@@ -881,6 +957,87 @@ export class UIService {
                 this.priceHistoryModal.style.display = 'none';
                 this.currentHistoryItem = null;
             }
+        });
+    }
+
+    toggleFavoritesMode() {
+        this.showFavoritesOnly = this.showFavoritesCheckbox.checked;
+        this.updateTable();
+    }
+
+    loadFavoriteItemsFromStorage() {
+        const savedFavorites = localStorage.getItem(STORAGE_KEYS.FAVORITE_ITEMS);
+        this.favoriteItems = new Map();
+        
+        if (savedFavorites) {
+            try {
+                const favorites = JSON.parse(savedFavorites);
+                
+                // Проверяем каждый элемент перед добавлением
+                for (const [key, item] of Object.entries(favorites)) {
+                    if (this.isValidFavoriteItem(item)) {
+                        this.favoriteItems.set(key, item);
+                    }
+                }
+            } catch (error) {
+                console.error('Ошибка при загрузке избранных товаров:', error);
+            }
+        }
+    }
+
+    saveFavoriteItemsToStorage() {
+        const favoritesObject = Object.fromEntries(this.favoriteItems);
+        localStorage.setItem(STORAGE_KEYS.FAVORITE_ITEMS, JSON.stringify(favoritesObject));
+    }
+
+    toggleFavorite(item) {
+        if (this.favoriteItems.has(item.itemId)) {
+            this.favoriteItems.delete(item.itemId);
+        } else {
+            this.favoriteItems.set(item.itemId, {
+                itemId: item.itemId,
+                itemName: item.itemName,
+                quality: item.quality || 0,
+                buyPrice: item.buyPrice || 0,
+                sellPrice: item.sellPrice || 0,
+                itemProfit: item.itemProfit || 0,
+                itemProfitPercent: item.itemProfitPercent || 0,
+                buyDate: item.buyDate || '-',
+                sellDate: item.sellDate || '-',
+                fromLocation: item.fromLocation || '-',
+                toLocation: item.toLocation || '-',
+                soldPerDay: item.soldPerDay || 0
+            });
+        }
+        this.saveFavoriteItemsToStorage();
+    }
+
+    saveFavoritesCheckboxState() {
+        localStorage.setItem(STORAGE_KEYS.SHOW_FAVORITES, this.showFavoritesCheckbox.checked);
+    }
+
+    loadFavoritesCheckboxState() {
+        const savedState = localStorage.getItem(STORAGE_KEYS.SHOW_FAVORITES);
+        if (savedState !== null) {
+            this.showFavoritesCheckbox.checked = savedState === 'true';
+            this.showFavoritesOnly = this.showFavoritesCheckbox.checked;
+        }
+    }
+
+    isValidFavoriteItem(item) {
+        return item && item.itemId && item.itemName;
+    }
+
+    sortDataArray(dataArray) {
+        dataArray.sort((a, b) => {
+            const valueA = a[this.currentSortField];
+            const valueB = b[this.currentSortField];
+            
+            if (typeof valueA === 'string' && typeof valueB === 'string') {
+                return this.sortAscending ? valueA.localeCompare(valueB) : valueB.localeCompare(valueA);
+            }
+            
+            return this.sortAscending ? valueA - valueB : valueB - valueA;
         });
     }
 } 
