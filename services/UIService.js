@@ -423,7 +423,8 @@ export class UIService {
                 row.classList.remove('copied-item');
             }
 
-            navigator.clipboard.writeText(item.itemName)
+            const formattedItemName = this.formatItemName(item.itemId, item.itemName);
+            navigator.clipboard.writeText(formattedItemName)
                 .then(() => {
                     this.iconService.showCopyTooltip(itemIcon, "Скопировано!");
 
@@ -447,7 +448,8 @@ export class UIService {
         this.iconService.loadItemIcon(iconUrl, itemIcon);
 
         const itemNameSpan = document.createElement('span');
-        itemNameSpan.textContent = item.itemName;
+        const formattedItemName = this.formatItemName(item.itemId, item.itemName);
+        itemNameSpan.textContent = formattedItemName;
         itemNameSpan.style.whiteSpace = 'nowrap';
         itemNameSpan.style.overflow = 'hidden';
         itemNameSpan.style.textOverflow = 'ellipsis';
@@ -584,7 +586,8 @@ export class UIService {
 
         const nameSpan = document.createElement('span');
         nameSpan.className = 'item-name';
-        nameSpan.textContent = `${item.itemName} (${this.dataService.getQualityName(item.quality)})`;
+        const formattedItemName = this.formatItemName(item.itemId, item.itemName);
+        nameSpan.textContent = `${formattedItemName} (${this.dataService.getQualityName(item.quality)})`;
 
         const scoreSpan = document.createElement('span');
         scoreSpan.className = 'item-score';
@@ -755,7 +758,7 @@ export class UIService {
     }
 
     async showPriceHistory(item) {
-        document.getElementById('price-history-item-name').textContent = `${item.itemName}`;
+        document.getElementById('price-history-item-name').textContent = `${this.formatItemName(item.itemId, item.itemName)}`;
         
         const itemIconElement = document.getElementById('price-history-item-icon');
         const iconUrl = this.iconService.getItemIconUrl(item.itemId);
@@ -1039,5 +1042,19 @@ export class UIService {
             
             return this.sortAscending ? valueA - valueB : valueB - valueA;
         });
+    }
+
+    // Функция для форматирования имени предмета с учетом уровня и зачарования
+    formatItemName(itemId, itemName) {
+        // Парсим уровень (T число)
+        const tierMatch = itemId.match(/T(\d+)_/);
+        const tier = tierMatch ? tierMatch[1] : '?';
+        
+        // Парсим зачарование (@ число)
+        const enchantMatch = itemId.match(/@(\d+)$/);
+        const enchant = enchantMatch ? enchantMatch[1] : '0';
+        
+        // Возвращаем отформатированное имя
+        return `${itemName} [${tier}.${enchant}]`;
     }
 } 
